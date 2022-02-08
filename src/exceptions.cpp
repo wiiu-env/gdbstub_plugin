@@ -1,5 +1,9 @@
 
-#include "cafe/coreinit.h"
+
+#include <coreinit/context.h>
+#include <coreinit/debug.h>
+#include <coreinit/exception.h>
+#include <cstdio>
 
 void DumpContext(OSContext *context, const char *excType) {
     char buffer[1000];
@@ -28,17 +32,17 @@ void DumpContext(OSContext *context, const char *excType) {
     OSFatal(buffer);
 }
 
-bool DSIHandler(OSContext *context) {
+BOOL DSIHandler(OSContext *context) {
     DumpContext(context, "A DSI");
     return false;
 }
 
-bool ISIHandler(OSContext *context) {
+BOOL ISIHandler(OSContext *context) {
     DumpContext(context, "An ISI");
     return false;
 }
 
-bool ProgramHandler(OSContext *context) {
+BOOL ProgramHandler(OSContext *context) {
     DumpContext(context, "A program");
     return false;
 }

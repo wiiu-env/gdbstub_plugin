@@ -1,9 +1,11 @@
 
 #pragma once
 
-#include "cafe/coreinit.h"
 #include "kernel.h"
 #include "socket.h"
+#include <coreinit/messagequeue.h>
+#include <coreinit/mutex.h>
+#include <coreinit/thread.h>
 
 #include <cstdint>
 #include <vector>
@@ -13,6 +15,10 @@
 
 #define TRAP          0x7FE00008
 
+
+extern OSThread **pThreadList;
+
+#define ThreadList (*pThreadList)
 
 template<int N>
 class Bits {
@@ -26,7 +32,7 @@ public:
     }
 
 private:
-    uint32_t value;
+    uint32_t value{};
 };
 
 
@@ -42,14 +48,14 @@ public:
     void resume();
 
     Type type;
-    OSContext context;
+    OSContext context{};
 
-    OSThread *thread;
+    OSThread *thread{};
 
-    OSMessageQueue queue;
-    OSMessage message;
+    OSMessageQueue queue{};
+    OSMessage message{};
 
-    bool isPaused;
+    bool isPaused{};
 };
 
 
@@ -70,7 +76,7 @@ private:
 
 class BreakPoint {
 public:
-    bool isRange(uint32_t addr, uint32_t length);
+    bool isRange(uint32_t addr, uint32_t length) const;
 
     uint32_t address;
     uint32_t instruction;
@@ -91,7 +97,7 @@ public:
     }
 
     T *alloc() {
-        for (int i = 0; i < size(); i++) {
+        for (size_t i = 0; i < size(); i++) {
             if (list[i].address == 0) {
                 return &list[i];
             }
@@ -105,7 +111,7 @@ public:
     }
 
     T *find(uint32_t addr) {
-        for (int i = 0; i < size(); i++) {
+        for (size_t i = 0; i < size(); i++) {
             if (list[i].address == addr) {
                 return &list[i];
             }
@@ -114,17 +120,17 @@ public:
     }
 
     T *findRange(uint32_t addr, uint32_t length, int *index) {
-        int i = *index;
+        size_t i = *index;
         while (i < size()) {
             if (list[i].isRange(addr, length)) {
-                *index = i + 1;
+                *index = (int) i + 1;
                 return &list[i];
             }
             i++;
         }
 
-        if (i > *index) {
-            *index = i;
+        if ((int) i > *index) {
+            *index = (int) i;
         }
         return nullptr;
     }
@@ -134,7 +140,7 @@ public:
     }
 
     void cleanup() {
-        for (int i = 0; i < size(); i++) {
+        for (size_t i = 0; i < size(); i++) {
             if (list[i].address != 0) {
                 KernelWriteU32(list[i].address, list[i].instruction);
                 list[i].address     = 0;
@@ -176,7 +182,7 @@ private:
     BreakPointList<BreakPoint> breakpoints;
     BreakPointList<SpecialBreakPoint> special;
 
-    OSMutex mutex;
+    OSMutex mutex{};
 };
 
 
@@ -194,7 +200,7 @@ private:
 
     uint32_t *alloc();
     void free(int index);
-    void branchConditional(ExceptionState *state, uint32_t instruction, uint32_t target, bool checkCtr);
+    static void branchConditional(ExceptionState *state, uint32_t instruction, uint32_t target, bool checkCtr);
 
     OSMutex mutex;
 
@@ -212,6 +218,8 @@ public:
 
     void start();
 
+    ~Debugger();
+
 private:
     enum Command {
         COMMAND_CLOSE,
@@ -228,10 +236,10 @@ private:
         COMMAND_SEND_MESSAGE
     };
 
-    static int threadEntry(int argc, void *argv);
-    static bool dsiHandler(OSContext *context);
-    static bool isiHandler(OSContext *context);
-    static bool programHandler(OSContext *context);
+    static int threadEntry(int argc, const char **argv);
+    static BOOL dsiHandler(OSContext *context);
+    static BOOL isiHandler(OSContext *context);
+    static BOOL programHandler(OSContext *context);
     static void exceptionHandler(OSContext *context, ExceptionState::Type type);
 
     void threadFunc();
@@ -247,18 +255,20 @@ private:
 
     bool checkDataRead(uint32_t addr, uint32_t length);
 
-    OSMessageQueue eventQueue;
-    OSMessage eventMessages[MESSAGE_COUNT];
+    OSMessageQueue eventQueue{};
+    OSMessage eventMessages[MESSAGE_COUNT]{};
 
-    OSThread *serverThread;
+    OSThread *serverThread{};
+    char *serverStack{};
 
     BreakPointMgr breakpoints;
     ExceptionMgr exceptions;
-    StepMgr stepper;
+    StepMgr stepper{};
 
-    bool initialized;
-    bool connected;
-    bool firstTrap;
+    bool stopRunning = false;
+    bool initialized{};
+    bool connected{};
+    bool firstTrap{};
 };
 
-extern Debugger *debugger;
+extern "C" Debugger *debugger;

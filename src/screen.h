@@ -1,15 +1,11 @@
 
 #pragma once
 
+#include <coreinit/screen.h>
 #include <cstdint>
 
 class Screen {
 public:
-    enum Display {
-        TV,
-        DRC
-    };
-
     Screen();
     ~Screen();
 
@@ -17,18 +13,18 @@ public:
     void clear(uint32_t color);
     void drawRect(int x1, int y1, int x2, int y2, uint32_t color);
     void fillRect(int x1, int y1, int x2, int y2, uint32_t color);
-    void drawText(int x, int y, const char *text);
-    void flip();
+    static void drawText(int x, int y, const char *text);
+    static void flip();
 
-    void clear(Display screen, uint32_t color);
-    void drawRect(Display screen, int x1, int y1, int x2, int y2, uint32_t color);
-    void fillRect(Display screen, int x1, int y1, int x2, int y2, uint32_t color);
-    void drawText(Display screen, int x, int y, const char *text);
-    void flip(Display screen);
+    static void clear(OSScreenID screen, uint32_t color);
+    static void drawRect(OSScreenID screen, int x1, int y1, int x2, int y2, uint32_t color);
+    static void fillRect(OSScreenID screen, int x1, int y1, int x2, int y2, uint32_t color);
+    static void drawText(OSScreenID screen, int x, int y, const char *text);
+    static void flip(OSScreenID screen);
 
 private:
     void *screenBuffer;
 
-    int convx(int x);
-    int convy(int y);
+    static int convx(int x);
+    static int convy(int y);
 };

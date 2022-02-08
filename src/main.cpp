@@ -1,87 +1,36 @@
-
-#include "cafe/coreinit.h"
-#include "cafe/nn_act.h"
-#include "cafe/nn_save.h"
-#include "cafe/nsysnet.h"
-#include "cafe/sysapp.h"
-#include "cafe/vpad.h"
-#include "hbl.h"
-#include "kernel.h"
-
 #include "debugger.h"
 #include "exceptions.h"
-#include "menu.h"
-#include "patches.h"
-#include "screen.h"
+#include "logger.h"
+#include <coreinit/debug.h>
+#include <wups.h>
+
+OSThread **pThreadList;
 
 
-bool GetTitleIdOnDisk(uint64_t *titleId) {
-    MCPTitleListType title;
-    uint32_t count = 0;
+WUPS_PLUGIN_NAME("Debugger");
+WUPS_PLUGIN_DESCRIPTION("FTP Server");
+WUPS_PLUGIN_VERSION("0.1");
+WUPS_PLUGIN_AUTHOR("Kinnay");
+WUPS_PLUGIN_LICENSE("GPL");
 
-    int handle = MCP_Open();
-    MCP_TitleListByDevice(handle, "odd", &count, &title, sizeof(title));
-    MCP_Close(handle);
+WUPS_USE_WUT_DEVOPTAB();
 
-    if (count > 0) {
-        *titleId = title.titleId;
-        return true;
-    }
-    return false;
-}
-
-int MenuMain() {
-    Screen screen;
-    screen.init();
-
-    Menu menu(&screen);
-
-    Menu::Option result = menu.show();
-    if (result == Menu::Exit) return EXIT_SUCCESS;
-    else if (result == Menu::LaunchDisk) {
-        uint64_t titleId;
-        if (GetTitleIdOnDisk(&titleId)) {
-            SYSLaunchTitle(titleId);
-        } else {
-            menu.setMessage("Please insert a valid disk");
-        }
-    } else if (result == Menu::ReturnToMenu) {
-        SYSLaunchMenu();
-    }
-    return EXIT_RELAUNCH_ON_LOAD;
-}
-
-int DebuggerMain() {
-    ApplyPatches();
-    debugger = new Debugger();
-    debugger->start();
-    return EXIT_RELAUNCH_ON_LOAD;
-}
-
-
-bool firstRun = true;
-int start() {
-    coreinitInitialize();
-    kernelInitialize();
-    vpadInitialize();
-    sysappInitialize();
-    nsysnetInitialize();
-    nnsaveInitialize();
-    nnactInitialize();
-
+INITIALIZE_PLUGIN() {
     InstallExceptionHandlers();
-
-    int result;
-    if (firstRun) {
-        result = MenuMain();
-    } else {
-        result = DebuggerMain();
-    }
-    firstRun = false;
-
-    return result;
+}
+ON_APPLICATION_START() {
+    initLogging();
+    DEBUG_FUNCTION_LINE("Started Debugger plugin");
+    pThreadList = (OSThread **) 0x100567F8;
+    debugger    = new Debugger();
+    DEBUG_FUNCTION_LINE("Created Debugger");
+    debugger->start();
+    DEBUG_FUNCTION_LINE("Started Debugger thread");
 }
 
-extern "C" int entryPoint() {
-    return start();
+ON_APPLICATION_REQUESTS_EXIT() {
+    DEBUG_FUNCTION_LINE("Deleting Debugger thread");
+    delete debugger;
+    DEBUG_FUNCTION_LINE("Deleted Debugger thread");
+    deinitLogging();
 }

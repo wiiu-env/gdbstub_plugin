@@ -1,13 +1,15 @@
-
-#include "cafe/nsysnet.h"
-
 #include "socket.h"
+#include "logger.h"
+#include <arpa/inet.h>
+#include <cstring>
+#include <unistd.h>
 
 Socket::Socket() : sock(-1) {}
 
 Socket::~Socket() {
     if (sock >= 0) {
-        socketclose(sock);
+        ::shutdown(sock, SHUT_RDWR);
+        ::close(sock);
     }
 }
 
@@ -22,13 +24,12 @@ bool Socket::init(Type type) {
 
 bool Socket::close() {
     if (sock >= 0) {
-        int result = socketclose(sock);
+        int result = ::close(sock);
         sock       = -1;
         return result == 0;
     }
     return true;
 }
-
 
 bool Client::sendall(const void *data, size_t length) {
     size_t sent = 0;
@@ -60,6 +61,12 @@ bool Client::recvall(void *data, size_t length) {
     return true;
 }
 
+struct sockaddr_kinnay {
+    uint16_t family;
+    uint16_t port;
+    uint32_t addr;
+    char zero[8];
+};
 
 bool Server::bind(int port) {
     uint32_t reuseaddr = 1;
@@ -69,28 +76,42 @@ bool Server::bind(int port) {
         return false;
     }
 
-    sockaddr serverAddr = {0};
+
+    /*
+    struct sockaddr_in bindAddress;
+    memset(&bindAddress, 0, sizeof(bindAddress));
+    bindAddress.sin_family      = AF_INET;
+    bindAddress.sin_port        = htons(port);
+    bindAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    result = ::bind(sock, (struct sockaddr *) &bindAddress, 16);*/
+
+    sockaddr_kinnay serverAddr = {0};
     serverAddr.family   = AF_INET;
     serverAddr.port     = port;
     serverAddr.addr     = 0;
 
-    result = ::bind(sock, &serverAddr, 16);
+    result = ::bind(sock, (const struct sockaddr *) &serverAddr, 16);
     if (result < 0) {
+        DEBUG_FUNCTION_LINE("Bind was not successful");
         close();
         return false;
     }
+    DEBUG_FUNCTION_LINE("Bind was successful");
     return true;
 }
 
 bool Server::accept(Client *client) {
     int result = listen(sock, 1);
     if (result < 0) {
+        DEBUG_FUNCTION_LINE("listen failed");
         close();
         return false;
     }
 
     int fd = ::accept(sock, 0, 0);
     if (fd < 0) {
+        DEBUG_FUNCTION_LINE("accept failed");
         close();
         return false;
     }

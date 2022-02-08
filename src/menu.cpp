@@ -1,9 +1,8 @@
 
 #include "menu.h"
-#include "cafe/vpad.h"
 #include "color.h"
 #include "input.h"
-#include "screen.h"
+#include <vpad/input.h>
 
 Menu::Menu(Screen *screen) : screen(screen) {
     currentOption = LaunchDisk;
@@ -30,14 +29,14 @@ void Menu::setMessage(const char *message) {
 
 void Menu::redraw() {
     screen->clear(COLOR_BLUE);
-    screen->drawText(5, 5, "Wii U Debugger");
-    screen->drawText(5, 7, "Choose an option:");
-    screen->drawText(8, 9, "Install and launch disc");
-    screen->drawText(8, 10, "Install and return to system menu");
-    screen->drawText(8, 11, "Exit without installing");
-    screen->drawText(5, 9 + currentOption, ">");
+    Screen::drawText(5, 5, "Wii U Debugger");
+    Screen::drawText(5, 7, "Choose an option:");
+    Screen::drawText(8, 9, "Install and launch disc");
+    Screen::drawText(8, 10, "Install and return to system menu");
+    Screen::drawText(8, 11, "Exit without installing");
+    Screen::drawText(5, 9 + currentOption, ">");
     if (message) {
-        screen->drawText(5, 13, message);
+        Screen::drawText(5, 13, message);
     }
-    screen->flip();
+    Screen::flip();
 }

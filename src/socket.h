@@ -5,10 +5,8 @@
 
 class Socket {
 public:
-    enum Type {
-        TCP,
-        UDP
-    };
+    enum Type { TCP,
+                UDP };
 
     Socket();
     ~Socket();

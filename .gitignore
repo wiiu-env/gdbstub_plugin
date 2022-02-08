@@ -1,0 +1,7 @@
+CMakeLists.txt
+*.wps
+*.elf
+.idea/
+build/
+cmake-build-debug/
+__pycache__/

@@ -5,11 +5,9 @@
 
 class Menu {
 public:
-    enum Option {
-        LaunchDisk,
-        ReturnToMenu,
-        Exit
-    };
+    enum Option { LaunchDisk,
+                  ReturnToMenu,
+                  Exit };
 
     Menu(Screen *screen);
     Option show();

@@ -1,18 +1,22 @@
-
-#include "cafe/coreinit.h"
-#include "cafe/nsysnet.h"
-#include "cafe/vpad.h"
-#include "kernel.h"
-
 #include "debugger.h"
 #include "exceptions.h"
 #include "input.h"
+#include "logger.h"
 #include "screen.h"
-
+#include <coreinit/cache.h>
+#include <coreinit/debug.h>
+#include <coreinit/dynload.h>
+#include <coreinit/exception.h>
+#include <coreinit/memory.h>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <malloc.h>
+#include <vpad/input.h>
 
+Debugger *debugger;
 
-bool BreakPoint::isRange(uint32_t addr, uint32_t length) {
+bool BreakPoint::isRange(uint32_t addr, uint32_t length) const {
     return address >= addr && address <= addr + length - 1;
 }
 
@@ -125,7 +129,7 @@ void BreakPointMgr::read(void *buffer, uint32_t addr, uint32_t length) {
         char *bufptr    = (char *) buffer + offset;
         if (bp->address > addr + length - 4) {
             uint32_t value = bp->instruction;
-            for (int i = 0; i < length - offset; i++) {
+            for (uint32_t i = 0; i < length - offset; i++) {
                 bufptr[i] = value >> 24;
                 value <<= 8;
             }
@@ -195,7 +199,7 @@ uint32_t BreakPointMgr::getInstr(uint32_t addr) {
 
 void BreakPointMgr::clearSpecial(OSThread *thread) {
     lock();
-    for (int i = 0; i < special.size(); i++) {
+    for (size_t i = 0; i < special.size(); i++) {
         SpecialBreakPoint *bp = special[i];
         if (bp->thread == thread) {
             disable(bp);
@@ -276,6 +280,7 @@ bool ExceptionState::isBreakpoint() {
 }
 
 void ExceptionState::resume() {
+    DEBUG_FUNCTION_LINE("OSLoadContext");
     OSLoadContext(&context);
 }
 
@@ -294,12 +299,11 @@ void ExceptionMgr::unlock() {
 
 void ExceptionMgr::cleanup() {
     OSMessage message;
-    message.message = Debugger::STEP_CONTINUE;
+    message.message = (void *) Debugger::STEP_CONTINUE;
 
     lock();
 
-    for (int i = 0; i < list.size(); i++) {
-        ExceptionState *state = list[i];
+    for (auto state : list) {
         if (state->isPaused) {
             OSSendMessage(&state->queue, &message, OS_MESSAGE_FLAGS_NONE);
         }
@@ -310,8 +314,7 @@ void ExceptionMgr::cleanup() {
 
 ExceptionState *ExceptionMgr::find(OSThread *thread) {
     lock();
-    for (int i = 0; i < list.size(); i++) {
-        ExceptionState *state = list[i];
+    for (auto state : list) {
         if (state->thread == thread) {
             unlock();
             return state;
@@ -493,7 +496,7 @@ void StepMgr::adjustAddress(ExceptionState *state) {
 
 bool Debugger::checkDataRead(uint32_t addr, uint32_t length) {
     uint32_t memStart, memSize;
-    OSGetMemBound(MEM2, &memStart, &memSize);
+    OSGetMemBound(OS_MEM2, &memStart, &memSize);
 
     uint32_t memEnd = memStart + memSize;
 
@@ -502,7 +505,7 @@ bool Debugger::checkDataRead(uint32_t addr, uint32_t length) {
 
 Debugger::StepCommand Debugger::notifyBreak(ExceptionState *state) {
     OSMessage message;
-    message.message = ExceptionState::PROGRAM;
+    message.message = (void *) ExceptionState::PROGRAM;
     message.args[0] = (uint32_t) &state->context;
     message.args[1] = sizeof(OSContext);
     message.args[2] = (uint32_t) state->thread;
@@ -511,7 +514,7 @@ Debugger::StepCommand Debugger::notifyBreak(ExceptionState *state) {
     state->isPaused = true;
     OSReceiveMessage(&state->queue, &message, OS_MESSAGE_FLAGS_BLOCKING);
     state->isPaused = false;
-    return (StepCommand) message.message;
+    return (StepCommand) (uint32_t) message.message;
 }
 
 void Debugger::resumeBreakPoint(ExceptionState *state) {
@@ -539,24 +542,28 @@ void Debugger::handleBreakPoint(ExceptionState *state) {
 
         Screen screen;
         screen.init();
-        screen.drawText(
+        Screen::drawText(
                 0, 0, "Waiting for debugger connection.\n"
                       "Press the home button to continue without debugger.\n"
                       "You can still connect while the game is running.");
-        screen.flip();
+        Screen::flip();
 
         while (!connected) {
             uint32_t buttons = GetInput(VPAD_BUTTON_HOME);
             if (buttons) {
+                DEBUG_FUNCTION_LINE("Pressed home");
                 state->context.srr0 += 4;
                 state->resume();
             }
         }
     }
 
+    DEBUG_FUNCTION_LINE("stepper.handleBreakPoint(state);");
+
     stepper.handleBreakPoint(state);
 
     if (!connected) {
+        DEBUG_FUNCTION_LINE("if (!connected) {");
         handleFatalCrash(&state->context, state->type);
     }
 
@@ -579,7 +586,7 @@ void Debugger::handleCrash(ExceptionState *state) {
     stepper.adjustAddress(state);
     if (connected) {
         OSMessage message;
-        message.message = state->type;
+        message.message = (void *) state->type;
         message.args[0] = (uint32_t) &state->context;
         message.args[1] = sizeof(OSContext);
         message.args[2] = (uint32_t) state->thread;
@@ -628,7 +635,7 @@ void Debugger::exceptionHandler(OSContext *context, ExceptionState::Type type) {
     debugger->handleException(context, type);
 }
 
-bool Debugger::dsiHandler(OSContext *context) {
+BOOL Debugger::dsiHandler(OSContext *context) {
     OSContext *info = new OSContext();
     memcpy(info, context, sizeof(OSContext));
     context->srr0   = (uint32_t) exceptionHandler;
@@ -637,7 +644,7 @@ bool Debugger::dsiHandler(OSContext *context) {
     return true;
 }
 
-bool Debugger::isiHandler(OSContext *context) {
+BOOL Debugger::isiHandler(OSContext *context) {
     OSContext *info = new OSContext();
     memcpy(info, context, sizeof(OSContext));
     context->srr0   = (uint32_t) exceptionHandler;
@@ -646,7 +653,7 @@ bool Debugger::isiHandler(OSContext *context) {
     return true;
 }
 
-bool Debugger::programHandler(OSContext *context) {
+BOOL Debugger::programHandler(OSContext *context) {
     OSContext *info = new OSContext();
     memcpy(info, context, sizeof(OSContext));
     context->srr0   = (uint32_t) exceptionHandler;
@@ -664,13 +671,37 @@ void Debugger::cleanup() {
         ;
 }
 
+extern "C" void OSRestoreInterrupts(int state);
+extern "C" void __OSLockScheduler(void *);
+extern "C" void __OSUnlockScheduler(void *);
+extern "C" int OSDisableInterrupts();
+
+static const char **commandNames = (const char *[]){
+        "COMMAND_CLOSE",
+        "COMMAND_READ",
+        "COMMAND_WRITE",
+        "COMMAND_WRITE_CODE",
+        "COMMAND_GET_MODULE_NAME",
+        "COMMAND_GET_MODULE_LIST",
+        "COMMAND_GET_THREAD_LIST",
+        "COMMAND_GET_STACK_TRACE",
+        "COMMAND_TOGGLE_BREAKPOINT",
+        "COMMAND_POKE_REGISTERS",
+        "COMMAND_RECEIVE_MESSAGES",
+        "COMMAND_SEND_MESSAGE"};
+
 void Debugger::mainLoop(Client *client) {
-    while (true) {
+    DEBUG_FUNCTION_LINE("About to enter mainLoop while");
+    while (!stopRunning) {
         uint8_t cmd;
         if (!client->recvall(&cmd, 1)) return;
 
-        if (cmd == COMMAND_CLOSE) return;
-        else if (cmd == COMMAND_READ) {
+        if (cmd <= 11) {
+            DEBUG_FUNCTION_LINE("Recieved command %s %d", commandNames[cmd], cmd);
+        }
+        if (cmd == COMMAND_CLOSE) {
+            return;
+        } else if (cmd == COMMAND_READ) {
             uint32_t addr, length;
             if (!client->recvall(&addr, 4)) return;
             if (!client->recvall(&length, 4)) return;
@@ -678,10 +709,10 @@ void Debugger::mainLoop(Client *client) {
             char *buffer = new char[length];
             breakpoints.read(buffer, addr, length);
             if (!client->sendall(buffer, length)) {
-                delete buffer;
+                delete[] buffer;
                 return;
             }
-            delete buffer;
+            delete[] buffer;
         } else if (cmd == COMMAND_WRITE) {
             uint32_t addr, length;
             if (!client->recvall(&addr, 4)) return;
@@ -694,47 +725,53 @@ void Debugger::mainLoop(Client *client) {
 
             char *buffer = new char[length];
             if (!client->recvall(buffer, length)) {
-                delete buffer;
+                delete[] buffer;
                 return;
             }
             breakpoints.write(buffer, addr, length);
-            delete buffer;
+            delete[] buffer;
         } else if (cmd == COMMAND_GET_MODULE_NAME) {
             char name[0x40];
             int length = 0x40;
-            OSDynLoad_GetModuleName(-1, name, &length);
+            OSDynLoad_GetModuleName(reinterpret_cast<OSDynLoad_Module>(-1), name, &length);
 
             length = strlen(name);
             if (!client->sendall(&length, 4)) return;
             if (!client->sendall(name, length)) return;
         } else if (cmd == COMMAND_GET_MODULE_LIST) {
-            OSLockMutex(OSDynLoad_gLoaderLock);
+            int num_rpls = OSDynLoad_GetNumberOfRPLs();
+            if (num_rpls == 0) {
+                return;
+            }
+
+            std::vector<OSDynLoad_NotifyData> rpls;
+            rpls.resize(num_rpls);
+
+            bool ret = OSDynLoad_GetRPLInfo(0, num_rpls, rpls.data());
+            if (!ret) {
+                return;
+            }
 
             char buffer[0x1000]; //This should be enough
-            uint32_t offset            = 0;
-            OSDynLoad_RPLInfo *current = FirstRPL;
-            while (current) {
-                OSDynLoad_NotifyData *info = current->notifyData;
+            uint32_t offset = 0;
 
-                uint32_t namelen = strlen(current->name);
+            for (auto &info : rpls) {
+                uint32_t namelen = strlen(info.name);
                 if (offset + 0x18 + namelen > 0x1000) {
                     break;
                 }
-
-                uint32_t *infobuf = (uint32_t *) (buffer + offset);
-                infobuf[0]        = info->textAddr;
-                infobuf[1]        = info->textSize;
-                infobuf[2]        = info->dataAddr;
-                infobuf[3]        = info->dataSize;
-                infobuf[4]        = (uint32_t) current->entryPoint;
-                infobuf[5]        = namelen;
-                memcpy(&infobuf[6], current->name, namelen);
-                offset += 0x18 + namelen;
-
-                current = current->next;
+                auto *infobuf = (uint32_t *) (buffer + offset);
+                infobuf[0]    = info.textAddr;
+                infobuf[1]    = info.textSize;
+                infobuf[2]    = info.dataAddr;
+                infobuf[3]    = info.dataSize;
+                infobuf[4]    = (uint32_t) 0; // TODO: missing
+                infobuf[5]    = namelen;
+                memcpy(&infobuf[6], info.name, namelen);
+                offset += 0x18 + strlen(info.name);
             }
 
-            OSUnlockMutex(OSDynLoad_gLoaderLock);
+            //OSUnlockMutex(OSDynLoad_gLoaderLock);
 
             if (!client->sendall(&offset, 4)) return;
             if (!client->sendall(buffer, offset)) return;
@@ -758,9 +795,10 @@ void Debugger::mainLoop(Client *client) {
                 }
 
                 int priority = current->basePriority;
-                if (current->type == 1) {
+                int type     = *(uint32_t *) (current->__unk11);
+                if (type == 1) {
                     priority -= 0x20;
-                } else if (current->type == 2) {
+                } else if (type == 2) {
                     priority -= 0x40;
                 }
 
@@ -768,7 +806,7 @@ void Debugger::mainLoop(Client *client) {
                 infobuf[0]        = (uint32_t) current;
                 infobuf[1]        = current->attr & 7;
                 infobuf[2]        = priority;
-                infobuf[3]        = (uint32_t) current->stackBase;
+                infobuf[3]        = (uint32_t) current->stackStart;
                 infobuf[4]        = (uint32_t) current->stackEnd;
                 infobuf[5]        = (uint32_t) current->entryPoint;
                 infobuf[6]        = namelen;
@@ -851,7 +889,7 @@ void Debugger::mainLoop(Client *client) {
             OSMessage message;
             if (!client->recvall(&message, sizeof(OSMessage))) return;
 
-            OSThread *thread = (OSThread *) message.args[0];
+            auto *thread = (OSThread *) message.args[0];
 
             exceptions.lock();
             ExceptionState *state = exceptions.find(thread);
@@ -859,30 +897,32 @@ void Debugger::mainLoop(Client *client) {
                 OSSendMessage(&state->queue, &message, OS_MESSAGE_FLAGS_NONE);
             }
             exceptions.unlock();
+        } else {
+            DEBUG_FUNCTION_LINE("Recieved unknown command %d", cmd);
         }
     }
 }
 
 void Debugger::threadFunc() {
-    int result = socket_lib_init();
-    if (result < 0) {
-        OSFatal("Failed to initialize socket library");
-    }
-
+    DEBUG_FUNCTION_LINE("Hello from debugger thread :)!");
     OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_DSI, dsiHandler);
     OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_ISI, isiHandler);
     OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_PROGRAM, programHandler);
+    DEBUG_FUNCTION_LINE("Callback init done.!");
 
     Server server;
     Client client;
 
+    DEBUG_FUNCTION_LINE("Set initialized = true");
     initialized = true;
-    while (true) {
+    while (!stopRunning) {
         if (!server.init(Socket::TCP)) continue;
         if (!server.bind(1560)) continue;
         if (!server.accept(&client)) continue;
+        DEBUG_FUNCTION_LINE("Accepted a connection");
         connected = true;
         mainLoop(&client);
+        DEBUG_FUNCTION_LINE("Lets do some cleanup");
         cleanup();
         connected = false;
         client.close();
@@ -890,7 +930,8 @@ void Debugger::threadFunc() {
     }
 }
 
-int Debugger::threadEntry(int argc, void *argv) {
+int Debugger::threadEntry(int argc, const char **argv) {
+    DEBUG_FUNCTION_LINE("threadEntry");
     debugger->threadFunc();
     return 0;
 }
@@ -900,25 +941,45 @@ void Debugger::start() {
     connected   = false;
     firstTrap   = true;
 
+    DEBUG_FUNCTION_LINE("OSInitMessageQueue");
     OSInitMessageQueue(&eventQueue, eventMessages, MESSAGE_COUNT);
 
+    DEBUG_FUNCTION_LINE("init breakpoints");
     breakpoints.init();
+    DEBUG_FUNCTION_LINE("init exceptions");
     exceptions.init();
+    DEBUG_FUNCTION_LINE("init stepper");
     stepper.init();
 
-    serverThread = new OSThread();
-    char *stack  = new char[0x8000];
 
+    DEBUG_FUNCTION_LINE("Alloc thread");
+    serverThread = (OSThread *) memalign(0x20, sizeof(OSThread));
+    DEBUG_FUNCTION_LINE("Alloc stack");
+    serverStack = (char *) memalign(0x20, STACK_SIZE);
+
+
+    DEBUG_FUNCTION_LINE("Create thread");
     OSCreateThread(
             serverThread, threadEntry, 0, 0,
-            stack + STACK_SIZE, STACK_SIZE,
+            serverStack + STACK_SIZE, STACK_SIZE,
             0, 12);
+    DEBUG_FUNCTION_LINE("Set thread name");
     OSSetThreadName(serverThread, "Debug Server");
+    DEBUG_FUNCTION_LINE("Resume thread");
     OSResumeThread(serverThread);
 
     while (!initialized) {
+        DEBUG_FUNCTION_LINE("Wait for thread init");
         OSSleepTicks(OSMillisecondsToTicks(20));
     }
+    DEBUG_FUNCTION_LINE("Thread init done! Exit start()");
 }
 
-Debugger *debugger;
+Debugger::~Debugger() {
+    stopRunning = true;
+    OSJoinThread(serverThread, nullptr);
+    free(serverStack);
+    serverStack = nullptr;
+    free(serverThread);
+    serverThread = nullptr;
+}
