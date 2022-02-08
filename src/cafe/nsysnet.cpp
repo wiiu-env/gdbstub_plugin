@@ -17,19 +17,19 @@ int (*socketclose)(int socket);
 int (*socket_lib_finish)();
 
 void nsysnetInitialize() {
-	uint32_t handle;
-	OSDynLoad_Acquire("nsysnet.rpl", &handle);
-	
-	OSDynLoad_FindExport(handle, false, "socket_lib_init", &socket_lib_init);
-	OSDynLoad_FindExport(handle, false, "inet_aton", &inet_aton);
-	OSDynLoad_FindExport(handle, false, "socket", &socket);
-	OSDynLoad_FindExport(handle, false, "setsockopt", &setsockopt);
-	OSDynLoad_FindExport(handle, false, "connect", &connect);
-	OSDynLoad_FindExport(handle, false, "bind", &bind);
-	OSDynLoad_FindExport(handle, false, "listen", &listen);
-	OSDynLoad_FindExport(handle, false, "accept", &accept);
-	OSDynLoad_FindExport(handle, false, "send", &send);
-	OSDynLoad_FindExport(handle, false, "recv", &recv);
-	OSDynLoad_FindExport(handle, false, "socketclose", &socketclose);
-	OSDynLoad_FindExport(handle, false, "socket_lib_finish", &socket_lib_finish);
+    uint32_t handle;
+    OSDynLoad_Acquire("nsysnet.rpl", &handle);
+
+    OSDynLoad_FindExport(handle, false, "socket_lib_init", &socket_lib_init);
+    OSDynLoad_FindExport(handle, false, "inet_aton", &inet_aton);
+    OSDynLoad_FindExport(handle, false, "socket", &socket);
+    OSDynLoad_FindExport(handle, false, "setsockopt", &setsockopt);
+    OSDynLoad_FindExport(handle, false, "connect", &connect);
+    OSDynLoad_FindExport(handle, false, "bind", &bind);
+    OSDynLoad_FindExport(handle, false, "listen", &listen);
+    OSDynLoad_FindExport(handle, false, "accept", &accept);
+    OSDynLoad_FindExport(handle, false, "send", &send);
+    OSDynLoad_FindExport(handle, false, "recv", &recv);
+    OSDynLoad_FindExport(handle, false, "socketclose", &socketclose);
+    OSDynLoad_FindExport(handle, false, "socket_lib_finish", &socket_lib_finish);
 }

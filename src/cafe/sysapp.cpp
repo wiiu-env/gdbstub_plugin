@@ -9,12 +9,12 @@ void (*SYSLaunchMenu)();
 void (*SYSLaunchTitleByPathFromLauncher)(const char *path, int len);
 
 void sysappInitialize() {
-	uint32_t handle;
-	OSDynLoad_Acquire("sysapp.rpl", &handle);
-	
-	OSDynLoad_FindExport(handle, false, "SYSCheckTitleExists", &SYSCheckTitleExists);
-	OSDynLoad_FindExport(handle, false, "SYSLaunchTitle", &SYSLaunchTitle);
-	OSDynLoad_FindExport(handle, false, "SYSLaunchMenu", &SYSLaunchMenu);
-	
-	OSDynLoad_FindExport(handle, false, "_SYSLaunchTitleByPathFromLauncher", &SYSLaunchTitleByPathFromLauncher);
+    uint32_t handle;
+    OSDynLoad_Acquire("sysapp.rpl", &handle);
+
+    OSDynLoad_FindExport(handle, false, "SYSCheckTitleExists", &SYSCheckTitleExists);
+    OSDynLoad_FindExport(handle, false, "SYSLaunchTitle", &SYSLaunchTitle);
+    OSDynLoad_FindExport(handle, false, "SYSLaunchMenu", &SYSLaunchMenu);
+
+    OSDynLoad_FindExport(handle, false, "_SYSLaunchTitleByPathFromLauncher", &SYSLaunchTitleByPathFromLauncher);
 }

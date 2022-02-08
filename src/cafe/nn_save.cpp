@@ -8,11 +8,11 @@ int (*SAVEGetSharedDataTitlePath)(uint64_t titleId, const char *path, char *outp
 void (*SAVEShutdown)();
 
 void nnsaveInitialize() {
-	uint32_t handle;
-	OSDynLoad_Acquire("nn_save.rpl", &handle);
-	
-	OSDynLoad_FindExport(handle, false, "SAVEInit", &SAVEInit);
-	OSDynLoad_FindExport(handle, false, "SAVEOpenFile", &SAVEOpenFile);
-	OSDynLoad_FindExport(handle, false, "SAVEGetSharedDataTitlePath", &SAVEGetSharedDataTitlePath);
-	OSDynLoad_FindExport(handle, false, "SAVEShutdown", &SAVEShutdown);
+    uint32_t handle;
+    OSDynLoad_Acquire("nn_save.rpl", &handle);
+
+    OSDynLoad_FindExport(handle, false, "SAVEInit", &SAVEInit);
+    OSDynLoad_FindExport(handle, false, "SAVEOpenFile", &SAVEOpenFile);
+    OSDynLoad_FindExport(handle, false, "SAVEGetSharedDataTitlePath", &SAVEGetSharedDataTitlePath);
+    OSDynLoad_FindExport(handle, false, "SAVEShutdown", &SAVEShutdown);
 }

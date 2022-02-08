@@ -1,101 +1,101 @@
 
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 // Timers
-#define OSTimerClockSpeed ((OSGetSystemInfo()->busClockSpeed) / 4)
+#define OSTimerClockSpeed          ((OSGetSystemInfo()->busClockSpeed) / 4)
 
-#define OSSecondsToTicks(val) ((uint64_t)(val) * (uint64_t)OSTimerClockSpeed)
-#define OSMillisecondsToTicks(val) (((uint64_t)(val) * (uint64_t)OSTimerClockSpeed) / 1000ull)
+#define OSSecondsToTicks(val)      ((uint64_t) (val) * (uint64_t) OSTimerClockSpeed)
+#define OSMillisecondsToTicks(val) (((uint64_t) (val) * (uint64_t) OSTimerClockSpeed) / 1000ull)
 
-#define OSTicksToSeconds(val) ((uint64_t)(val) / (uint64_t)OSTimerClockSpeed)
-#define OSTicksToMilliseconds(val) (((uint64_t)(val) * 1000ull) / (uint64_t)OSTimerClockSpeed)
+#define OSTicksToSeconds(val)      ((uint64_t) (val) / (uint64_t) OSTimerClockSpeed)
+#define OSTicksToMilliseconds(val) (((uint64_t) (val) *1000ull) / (uint64_t) OSTimerClockSpeed)
 
 // Memory
 enum OSMemoryType {
-	MEM1 = 1,
-	MEM2 = 2
+    MEM1 = 1,
+    MEM2 = 2
 };
 
 // System
 enum KernelInfoType {
-	TITLE_INFO = 0,
-	SYSTEM_INFO = 1,
-	PLATFORM_INFO = 2,
-	
-	KERNEL_STATISTICS = 4,
-	PERFORMANCE_NUMBERS = 5,
-	
-	PROCESS_INFO = 8,
-	
-	CRASH_INFO = 11,
-	APP_CRASH_CONTROL = 12,
-	COS_REPORT_MASKS = 13,
-	CRASH_RECOVERY = 14,
-	CRASH_DETAIL_LEVEL = 15,
-	CRASH_DUMP_TYPE = 16,
-	SHUTDOWN_REASON = 17,
-	WRITE_GATHER_REGS = 18,
-	PROC_DATA_BOUNDS = 19
+    TITLE_INFO    = 0,
+    SYSTEM_INFO   = 1,
+    PLATFORM_INFO = 2,
+
+    KERNEL_STATISTICS   = 4,
+    PERFORMANCE_NUMBERS = 5,
+
+    PROCESS_INFO = 8,
+
+    CRASH_INFO         = 11,
+    APP_CRASH_CONTROL  = 12,
+    COS_REPORT_MASKS   = 13,
+    CRASH_RECOVERY     = 14,
+    CRASH_DETAIL_LEVEL = 15,
+    CRASH_DUMP_TYPE    = 16,
+    SHUTDOWN_REASON    = 17,
+    WRITE_GATHER_REGS  = 18,
+    PROC_DATA_BOUNDS   = 19
 };
 
 struct OSSystemInfo {
-	uint32_t busClockSpeed;
-	uint32_t coreClockSpeed;
-	int64_t baseTime;
-	char _10[0x10];
+    uint32_t busClockSpeed;
+    uint32_t coreClockSpeed;
+    int64_t baseTime;
+    char _10[0x10];
 };
 
 struct OSTitleInfo {
-	char _0[0xC];
-	uint32_t ramStart;
-	uint32_t ramEnd;
-	char _14[0x20];
-	uint32_t systemHeapSize;
-	char _38[0x40];
-	uint32_t textStart;
-	uint32_t _7C;
-	uint32_t textSize;
-	uint32_t dataStart;
-	uint32_t _88;
-	uint32_t dataSize;
-	uint32_t loadStart;
-	uint32_t _94;
-	uint32_t loadSize;
-	char _9C[0xC];
+    char _0[0xC];
+    uint32_t ramStart;
+    uint32_t ramEnd;
+    char _14[0x20];
+    uint32_t systemHeapSize;
+    char _38[0x40];
+    uint32_t textStart;
+    uint32_t _7C;
+    uint32_t textSize;
+    uint32_t dataStart;
+    uint32_t _88;
+    uint32_t dataSize;
+    uint32_t loadStart;
+    uint32_t _94;
+    uint32_t loadSize;
+    char _9C[0xC];
 };
 
 struct OSTitleInfoEx {
-	OSTitleInfo info;
-	uint64_t osVersionId;
+    OSTitleInfo info;
+    uint64_t osVersionId;
 };
 
 // OSDynLoad
 struct OSDynLoad_NotifyData {
-	const char *path;
-	uint32_t textAddr;
-	uint32_t textOffset;
-	uint32_t textSize;
-	uint32_t dataAddr;
-	uint32_t dataOffset;
-	uint32_t dataSize;
-	uint32_t readAddr;
-	uint32_t readOffset;
-	uint32_t readSize;
+    const char *path;
+    uint32_t textAddr;
+    uint32_t textOffset;
+    uint32_t textSize;
+    uint32_t dataAddr;
+    uint32_t dataOffset;
+    uint32_t dataSize;
+    uint32_t readAddr;
+    uint32_t readOffset;
+    uint32_t readSize;
 };
 
 struct OSDynLoad_RPLInfo {
-	uint32_t handle;
-	uint32_t _4;
-	const char *name;
-	char _C[0x1C];
-	OSDynLoad_NotifyData *notifyData;
-	void *entryPoint;
-	char _30[0x24];
-	OSDynLoad_RPLInfo *next;
-	char _58[0x3C];
+    uint32_t handle;
+    uint32_t _4;
+    const char *name;
+    char _C[0x1C];
+    OSDynLoad_NotifyData *notifyData;
+    void *entryPoint;
+    char _30[0x24];
+    OSDynLoad_RPLInfo *next;
+    char _58[0x3C];
 };
 
 // Thread / mutex / context
@@ -104,188 +104,187 @@ struct OSMutex;
 struct OSAlarm;
 
 struct OSContext {
-	uint64_t tag;
-	
-	uint32_t gpr[32];
+    uint64_t tag;
 
-	uint32_t cr;
-	uint32_t lr;
-	uint32_t ctr;
-	uint32_t xer;
-	
-	uint32_t srr0;
-	uint32_t srr1;
-	
-	uint32_t dsisr;
-	uint32_t dar;
-	
-	char _A8[0xC];
-	
-	uint32_t fpscr;
-	double fpr[32];
-	
-	uint16_t spinLockCount;
-	uint16_t state;
-	
-	uint32_t gqr[8];
-	
-	uint32_t _1DC;
-	
-	double psf[32];
-	
-	uint64_t coretime[3];
-	uint64_t starttime;
-	
-	uint32_t error;
-	
-	uint32_t _304;
-	
-	uint32_t pmc1;
-	uint32_t pmc2;
-	uint32_t pmc3;
-	uint32_t pmc4;
-	uint32_t mmcr0;
-	uint32_t mmcr1;
+    uint32_t gpr[32];
+
+    uint32_t cr;
+    uint32_t lr;
+    uint32_t ctr;
+    uint32_t xer;
+
+    uint32_t srr0;
+    uint32_t srr1;
+
+    uint32_t dsisr;
+    uint32_t dar;
+
+    char _A8[0xC];
+
+    uint32_t fpscr;
+    double fpr[32];
+
+    uint16_t spinLockCount;
+    uint16_t state;
+
+    uint32_t gqr[8];
+
+    uint32_t _1DC;
+
+    double psf[32];
+
+    uint64_t coretime[3];
+    uint64_t starttime;
+
+    uint32_t error;
+
+    uint32_t _304;
+
+    uint32_t pmc1;
+    uint32_t pmc2;
+    uint32_t pmc3;
+    uint32_t pmc4;
+    uint32_t mmcr0;
+    uint32_t mmcr1;
 };
 
 struct OSThreadQueue {
-	OSThread *head;
-	OSThread *tail;
-	void *parent;
-	uint32_t _C;
+    OSThread *head;
+    OSThread *tail;
+    void *parent;
+    uint32_t _C;
 };
 
 struct OSThreadLink {
-	OSThread *next;
-	OSThread *prev;
+    OSThread *next;
+    OSThread *prev;
 };
 
 struct OSMutexLink {
-	OSMutex *next;
-	OSMutex *prev;
+    OSMutex *next;
+    OSMutex *prev;
 };
 
 struct OSMutexQueue {
-	OSMutex *head;
-	OSMutex *tail;
-	void *parent;
-	uint32_t _C;
+    OSMutex *head;
+    OSMutex *tail;
+    void *parent;
+    uint32_t _C;
 };
 
 struct OSMutex {
-	uint32_t tag;
-	const char *name;
-	uint32_t _8;
-	
-	OSThreadQueue queue;
-	OSThread *thread;
-	int count;
-	OSMutexLink link;
+    uint32_t tag;
+    const char *name;
+    uint32_t _8;
+
+    OSThreadQueue queue;
+    OSThread *thread;
+    int count;
+    OSMutexLink link;
 };
 
 typedef int (*OSThreadFunc)(int argc, void *argv);
 
 struct OSThread {
-	OSContext context;
-	
-	uint32_t tag;
+    OSContext context;
 
-	uint8_t state;
-	uint8_t attr;
-	uint16_t id;
-	uint32_t suspendCounter;
-	
-	int priority;
-	int basePriority;
+    uint32_t tag;
 
-	int exitValue;
-	
-	char _338[0x24];
-	
-	OSThreadQueue *queue;
-	OSThreadLink link;
-	
-	OSThreadQueue joinQueue;
-	
-	OSMutex *mutex;
-	OSMutexQueue mutexQueue;
-	
-	OSThreadLink activeLink;
-	
-	void *stackBase;
-	void *stackEnd;
-	
-	OSThreadFunc entryPoint;
-	
-	char _3A0[0x57C - 0x3A0];
-	
-	void *specific[0x10];
-	
-	int type;
-	
-	const char *name;
-	
-	char _5C4[0x6A0 - 0x5C4];
-	
+    uint8_t state;
+    uint8_t attr;
+    uint16_t id;
+    uint32_t suspendCounter;
+
+    int priority;
+    int basePriority;
+
+    int exitValue;
+
+    char _338[0x24];
+
+    OSThreadQueue *queue;
+    OSThreadLink link;
+
+    OSThreadQueue joinQueue;
+
+    OSMutex *mutex;
+    OSMutexQueue mutexQueue;
+
+    OSThreadLink activeLink;
+
+    void *stackBase;
+    void *stackEnd;
+
+    OSThreadFunc entryPoint;
+
+    char _3A0[0x57C - 0x3A0];
+
+    void *specific[0x10];
+
+    int type;
+
+    const char *name;
+
+    char _5C4[0x6A0 - 0x5C4];
 };
 
 // Messages
 enum OSMessageFlags {
-	OS_MESSAGE_FLAGS_NONE = 0,
-	OS_MESSAGE_FLAGS_BLOCKING = 1
+    OS_MESSAGE_FLAGS_NONE     = 0,
+    OS_MESSAGE_FLAGS_BLOCKING = 1
 };
 
 struct OSMessage {
-	uint32_t message;
-	uint32_t args[3];
+    uint32_t message;
+    uint32_t args[3];
 };
 
 struct OSMessageQueue {
-	uint32_t tag;
-	const char *name;
-	uint32_t _8;
-	OSThreadQueue sendQueue;
-	OSThreadQueue recvQueue;
-	OSMessage *messages;
-	uint32_t size;
-	uint32_t first;
-	uint32_t used;
+    uint32_t tag;
+    const char *name;
+    uint32_t _8;
+    OSThreadQueue sendQueue;
+    OSThreadQueue recvQueue;
+    OSMessage *messages;
+    uint32_t size;
+    uint32_t first;
+    uint32_t used;
 };
 
 // Alarms
 struct OSAlarmQueue {
-	uint32_t tag;
-	const char *name;
-	uint32_t _8;
-	
-	OSThreadQueue threadQueue;
-	OSAlarm *head;
-	OSAlarm *tail;
+    uint32_t tag;
+    const char *name;
+    uint32_t _8;
+
+    OSThreadQueue threadQueue;
+    OSAlarm *head;
+    OSAlarm *tail;
 };
 
 struct OSAlarmLink {
-	OSAlarm *prev;
-	OSAlarm *next;
+    OSAlarm *prev;
+    OSAlarm *next;
 };
 
 typedef void (*OSAlarmCallback)(OSAlarm *alarm, OSContext *context);
 
 struct OSAlarm {
-	uint32_t tag;
-	const char *name;
-	uint32_t _8;
-	OSAlarmCallback callback;
-	uint32_t group;
-	uint32_t _14;
-	uint64_t nextFire;
-	OSAlarmLink link;
-	uint64_t period;
-	uint64_t start;
-	void *userData;
-	uint32_t state;
-	OSThreadQueue threadQueue;
-	OSAlarmQueue *alarmQueue;
-	OSContext *context;
+    uint32_t tag;
+    const char *name;
+    uint32_t _8;
+    OSAlarmCallback callback;
+    uint32_t group;
+    uint32_t _14;
+    uint64_t nextFire;
+    OSAlarmLink link;
+    uint64_t period;
+    uint64_t start;
+    void *userData;
+    uint32_t state;
+    OSThreadQueue threadQueue;
+    OSAlarmQueue *alarmQueue;
+    OSContext *context;
 };
 
 // PPC disassembly
@@ -293,94 +292,94 @@ typedef void (*DisassemblyPrintFn)(const char *fmt, ...);
 typedef uint32_t (*DisassemblyFindSymbolFn)(uint32_t addr, char *buffer, size_t bufsize);
 
 enum DisassemblyFlags {
-	DISASSEMBLY_FLAGS_NONE = 0,
-	DISASSEMBLY_FLAGS_SIMPLIFY = 1,
-	DISASSEMBLY_FLAGS_SPACE = 0x20,
-	DISASSEMBLY_FLAGS_PLAIN = 0x40,
-	DISASSEMBLY_FLAGS_NO_OPCODE = 0x80,
-	DISASSEMBLY_FLAGS_PRINT_SYMBOLS = 0x100
+    DISASSEMBLY_FLAGS_NONE          = 0,
+    DISASSEMBLY_FLAGS_SIMPLIFY      = 1,
+    DISASSEMBLY_FLAGS_SPACE         = 0x20,
+    DISASSEMBLY_FLAGS_PLAIN         = 0x40,
+    DISASSEMBLY_FLAGS_NO_OPCODE     = 0x80,
+    DISASSEMBLY_FLAGS_PRINT_SYMBOLS = 0x100
 };
 
 // Exceptions
 enum OSExceptionMode {
-	OS_EXCEPTION_MODE_THREAD = 1,
-	OS_EXCEPTION_MODE_GLOBAL = 2,
-	OS_EXCEPTION_MODE_THREAD_ALL_CORES = 3,
-	OS_EXCEPTION_MODE_GLOBAL_ALL_CORES = 4
+    OS_EXCEPTION_MODE_THREAD           = 1,
+    OS_EXCEPTION_MODE_GLOBAL           = 2,
+    OS_EXCEPTION_MODE_THREAD_ALL_CORES = 3,
+    OS_EXCEPTION_MODE_GLOBAL_ALL_CORES = 4
 };
 
 enum OSExceptionType {
-	OS_EXCEPTION_TYPE_DSI = 2,
-	OS_EXCEPTION_TYPE_ISI = 3,
-	OS_EXCEPTION_TYPE_PROGRAM = 6
+    OS_EXCEPTION_TYPE_DSI     = 2,
+    OS_EXCEPTION_TYPE_ISI     = 3,
+    OS_EXCEPTION_TYPE_PROGRAM = 6
 };
 
 typedef bool (*OSExceptionCallback)(OSContext *context);
 
 // File system
 enum FSMode {
-	FS_MODE_READ_OWNER = 0x400,
-	FS_MODE_WRITE_OWNER = 0x200,
-	FS_MODE_EXEC_OWNER = 0x100,
-	
-	FS_MODE_READ_GROUP = 0x040,
-	FS_MODE_WRITE_GROUP = 0x020,
-	FS_MODE_EXEC_GROUP = 0x010,
-	
-	FS_MODE_READ_OTHER = 0x004,
-	FS_MODE_WRITE_OTHER = 0x002,
-	FS_MODE_EXEC_OTHER = 0x001
+    FS_MODE_READ_OWNER  = 0x400,
+    FS_MODE_WRITE_OWNER = 0x200,
+    FS_MODE_EXEC_OWNER  = 0x100,
+
+    FS_MODE_READ_GROUP  = 0x040,
+    FS_MODE_WRITE_GROUP = 0x020,
+    FS_MODE_EXEC_GROUP  = 0x010,
+
+    FS_MODE_READ_OTHER  = 0x004,
+    FS_MODE_WRITE_OTHER = 0x002,
+    FS_MODE_EXEC_OTHER  = 0x001
 };
 
 enum FSStatFlags {
-	FS_STAT_DIRECTORY = 0x80000000
+    FS_STAT_DIRECTORY = 0x80000000
 };
 
 enum FSMountSourceType {
-	FS_MOUNT_SOURCE_SD = 0
+    FS_MOUNT_SOURCE_SD = 0
 };
 
 struct FSClient {
-	char data[0x1700];
+    char data[0x1700];
 };
 
 struct FSCmdBlock {
-	char data[0xA80];
+    char data[0xA80];
 };
 
 struct FSMountSource {
-	char data[0x300];
+    char data[0x300];
 };
 
 struct __attribute__((packed)) FSStat {
-	FSStatFlags flags;
-	FSMode mode;
-	uint32_t owner;
-	uint32_t group;
-	uint32_t size;
-	char _14[0xC];
-	uint32_t entryId;
-	int64_t created;
-	int64_t modified;
-	char _34[0x30];
+    FSStatFlags flags;
+    FSMode mode;
+    uint32_t owner;
+    uint32_t group;
+    uint32_t size;
+    char _14[0xC];
+    uint32_t entryId;
+    int64_t created;
+    int64_t modified;
+    char _34[0x30];
 };
 
 struct FSDirectoryEntry {
-	FSStat info;
-	char name[256];
+    FSStat info;
+    char name[256];
 };
 
 // MCP
 struct MCPTitleListType {
-	uint64_t titleId;
-	uint32_t _4;
-	char path[56];
-	uint32_t appType;
-	char _48[0xC];
-	uint8_t device;
-	char _55;
-	char indexedDevice[10];
-	uint8_t _60;
+    uint64_t titleId;
+    uint32_t _4;
+    char path[56];
+    uint32_t appType;
+    char _48[0xC];
+    uint8_t device;
+    char _55;
+    char indexedDevice[10];
+    uint8_t _60;
 };
 
 // Function pointers
@@ -497,17 +496,17 @@ extern uint32_t (*MEMGetAllocatableSizeForExpHeapEx)(void *handle, int alignment
 
 extern void *(**pMEMAllocFromDefaultHeap)(uint32_t size);
 extern void *(**pMEMAllocFromDefaultHeapEx)(uint32_t size, int alignment);
-extern void  (**pMEMFreeToDefaultHeap)(void *ptr);
-#define MEMAllocFromDefaultHeap (*pMEMAllocFromDefaultHeap)
+extern void (**pMEMFreeToDefaultHeap)(void *ptr);
+#define MEMAllocFromDefaultHeap   (*pMEMAllocFromDefaultHeap)
 #define MEMAllocFromDefaultHeapEx (*pMEMAllocFromDefaultHeapEx)
-#define MEMFreeToDefaultHeap (*pMEMFreeToDefaultHeap)
+#define MEMFreeToDefaultHeap      (*pMEMFreeToDefaultHeap)
 
 // Internal
 extern OSDynLoad_RPLInfo **pMainRPL;
 extern OSDynLoad_RPLInfo **pFirstRPL;
 extern OSThread **pThreadList;
-#define MainRPL (*pMainRPL)
-#define FirstRPL (*pFirstRPL)
+#define MainRPL    (*pMainRPL)
+#define FirstRPL   (*pFirstRPL)
 #define ThreadList (*pThreadList)
 
 void coreinitInitialize();

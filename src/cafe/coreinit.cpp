@@ -1,9 +1,9 @@
 
 #include "cafe/coreinit.h"
 #include "hbl.h"
-#include <cstdint>
 #include <cstddef>
-	
+#include <cstdint>
+
 int (*OSDynLoad_Acquire)(const char *name, uint32_t *handle);
 int (*OSDynLoad_FindExport)(uint32_t handle, bool isData, const char *name, void *ptr);
 int (*OSDynLoad_GetModuleName)(uint32_t handle, char *name, int *size);
@@ -117,132 +117,132 @@ uint32_t (*MEMGetAllocatableSizeForExpHeapEx)(void *handle, int alignment);
 
 void *(**pMEMAllocFromDefaultHeap)(uint32_t size);
 void *(**pMEMAllocFromDefaultHeapEx)(uint32_t size, int alignment);
-void  (**pMEMFreeToDefaultHeap)(void *ptr);
+void (**pMEMFreeToDefaultHeap)(void *ptr);
 
 OSDynLoad_RPLInfo **pMainRPL;
 OSDynLoad_RPLInfo **pFirstRPL;
 OSThread **pThreadList;
 
 void coreinitInitialize() {
-	*(uint32_t *)&OSDynLoad_Acquire = OS_SPECIFICS->OSDynLoad_Acquire;
-	*(uint32_t *)&OSDynLoad_FindExport = OS_SPECIFICS->OSDynLoad_FindExport;
-	
-	uint32_t handle;
-	OSDynLoad_Acquire("coreinit.rpl", &handle);
-	
-	OSDynLoad_FindExport(handle, false, "OSDynLoad_GetModuleName", &OSDynLoad_GetModuleName);
-	OSDynLoad_FindExport(handle, true, "OSDynLoad_gLoaderLock", &OSDynLoad_gLoaderLock);
-	
-	OSDynLoad_FindExport(handle, false, "OSIsDebuggerInitialized", &OSIsDebuggerInitialized);
-	
-	OSDynLoad_FindExport(handle, false, "exit", &exit);
-	OSDynLoad_FindExport(handle, false, "_Exit", &_Exit);
+    *(uint32_t *) &OSDynLoad_Acquire    = OS_SPECIFICS->OSDynLoad_Acquire;
+    *(uint32_t *) &OSDynLoad_FindExport = OS_SPECIFICS->OSDynLoad_FindExport;
 
-	OSDynLoad_FindExport(handle, false, "OSFatal", &OSFatal);
-	
-	OSDynLoad_FindExport(handle, false, "OSGetSymbolName", &OSGetSymbolName);
-	OSDynLoad_FindExport(handle, false, "DisassemblePPCRange", &DisassemblePPCRange);
-	OSDynLoad_FindExport(handle, false, "DisassemblePPCOpcode", &DisassemblePPCOpcode);
-	
-	OSDynLoad_FindExport(handle, false, "OSSetExceptionCallback", &OSSetExceptionCallback);
-	OSDynLoad_FindExport(handle, false, "OSSetExceptionCallbackEx", &OSSetExceptionCallbackEx);
-	OSDynLoad_FindExport(handle, false, "OSLoadContext", &OSLoadContext);
-	
-	OSDynLoad_FindExport(handle, false, "OSDisableInterrupts", &OSDisableInterrupts);
-	OSDynLoad_FindExport(handle, false, "OSRestoreInterrupts", &OSRestoreInterrupts);
-	
-	OSDynLoad_FindExport(handle, false, "__OSLockScheduler", &__OSLockScheduler);
-	OSDynLoad_FindExport(handle, false, "__OSUnlockScheduler", &__OSUnlockScheduler);
-	
-	OSDynLoad_FindExport(handle, false, "OSInitMutex", &OSInitMutex);
-	OSDynLoad_FindExport(handle, false, "OSLockMutex", &OSLockMutex);
-	OSDynLoad_FindExport(handle, false, "OSUnlockMutex", &OSUnlockMutex);
-	
-	OSDynLoad_FindExport(handle, false, "OSInitMessageQueue", &OSInitMessageQueue);
-	OSDynLoad_FindExport(handle, false, "OSSendMessage", &OSSendMessage);
-	OSDynLoad_FindExport(handle, false, "OSReceiveMessage", &OSReceiveMessage);
+    uint32_t handle;
+    OSDynLoad_Acquire("coreinit.rpl", &handle);
 
-	OSDynLoad_FindExport(handle, false, "OSCreateAlarm", &OSCreateAlarm);
-	OSDynLoad_FindExport(handle, false, "OSSetAlarm", &OSSetAlarm);
-	OSDynLoad_FindExport(handle, false, "OSCancelAlarm", &OSCancelAlarm);
-	OSDynLoad_FindExport(handle, false, "OSWaitAlarm", &OSWaitAlarm);
+    OSDynLoad_FindExport(handle, false, "OSDynLoad_GetModuleName", &OSDynLoad_GetModuleName);
+    OSDynLoad_FindExport(handle, true, "OSDynLoad_gLoaderLock", &OSDynLoad_gLoaderLock);
 
-	OSDynLoad_FindExport(handle, false, "OSGetCurrentThread", &OSGetCurrentThread);
-	OSDynLoad_FindExport(handle, false, "OSGetDefaultThread", &OSGetDefaultThread);
-	OSDynLoad_FindExport(handle, false, "OSCreateThread", &OSCreateThread);
-	OSDynLoad_FindExport(handle, false, "OSResumeThread", &OSResumeThread);
-	OSDynLoad_FindExport(handle, false, "OSJoinThread", &OSJoinThread);
-	OSDynLoad_FindExport(handle, false, "OSExitThread", &OSExitThread);
-	OSDynLoad_FindExport(handle, false, "OSGetThreadName", &OSGetThreadName);
-	OSDynLoad_FindExport(handle, false, "OSSetThreadName", &OSSetThreadName);
-	OSDynLoad_FindExport(handle, false, "OSGetThreadAffinity", &OSGetThreadAffinity);
-	OSDynLoad_FindExport(handle, false, "OSGetThreadPriority", &OSGetThreadPriority);
-	
-	OSDynLoad_FindExport(handle, false, "OSGetSystemInfo", &OSGetSystemInfo);
-	OSDynLoad_FindExport(handle, false, "OSSleepTicks", &OSSleepTicks);
-	
-	OSDynLoad_FindExport(handle, false, "OSGetTitleID", &OSGetTitleID);
-	
-	OSDynLoad_FindExport(handle, false, "OSGetMemBound", &OSGetMemBound);
-	OSDynLoad_FindExport(handle, false, "OSEffectiveToPhysical", &OSEffectiveToPhysical);
-	
-	OSDynLoad_FindExport(handle, false, "OSScreenInit", &OSScreenInit);
-	OSDynLoad_FindExport(handle, false, "OSScreenGetBufferSizeEx", &OSScreenGetBufferSizeEx);
-	OSDynLoad_FindExport(handle, false, "OSScreenSetBufferEx", &OSScreenSetBufferEx);
-	OSDynLoad_FindExport(handle, false, "OSScreenEnableEx", &OSScreenEnableEx);
-	OSDynLoad_FindExport(handle, false, "OSScreenClearBufferEx", &OSScreenClearBufferEx);
-	OSDynLoad_FindExport(handle, false, "OSScreenFlipBuffersEx", &OSScreenFlipBuffersEx);
-	OSDynLoad_FindExport(handle, false, "OSScreenPutPixelEx", &OSScreenPutPixelEx);
-	OSDynLoad_FindExport(handle, false, "OSScreenPutFontEx", &OSScreenPutFontEx);
-	
-	OSDynLoad_FindExport(handle, false, "DCFlushRange", &DCFlushRange);
-	OSDynLoad_FindExport(handle, false, "DCInvalidateRange", &DCInvalidateRange);
-	OSDynLoad_FindExport(handle, false, "ICInvalidateRange", &ICInvalidateRange);
-	OSDynLoad_FindExport(handle, false, "IOS_Open", &IOS_Open);
-	OSDynLoad_FindExport(handle, false, "IOS_Ioctl", &IOS_Ioctl);
-	OSDynLoad_FindExport(handle, false, "IOS_Close", &IOS_Close);
-	
-	OSDynLoad_FindExport(handle, false, "FSInit", &FSInit);
-	OSDynLoad_FindExport(handle, false, "FSAddClient", &FSAddClient);
-	OSDynLoad_FindExport(handle, false, "FSInitCmdBlock", &FSInitCmdBlock);
-	OSDynLoad_FindExport(handle, false, "FSGetMountSource", &FSGetMountSource);
-	OSDynLoad_FindExport(handle, false, "FSMount", &FSMount);
-	OSDynLoad_FindExport(handle, false, "FSMakeDir", &FSMakeDir);
-	OSDynLoad_FindExport(handle, false, "FSChangeDir", &FSChangeDir);
-	OSDynLoad_FindExport(handle, false, "FSGetCwd", &FSGetCwd);
-	OSDynLoad_FindExport(handle, false, "FSOpenDir", &FSOpenDir);
-	OSDynLoad_FindExport(handle, false, "FSReadDir", &FSReadDir);
-	OSDynLoad_FindExport(handle, false, "FSCloseDir", &FSCloseDir);
-	OSDynLoad_FindExport(handle, false, "FSOpenFile", &FSOpenFile);
-	OSDynLoad_FindExport(handle, false, "FSGetStatFile", &FSGetStatFile);
-	OSDynLoad_FindExport(handle, false, "FSReadFile", &FSReadFile);
-	OSDynLoad_FindExport(handle, false, "FSWriteFile", &FSWriteFile);
-	OSDynLoad_FindExport(handle, false, "FSCloseFile", &FSCloseFile);
-	OSDynLoad_FindExport(handle, false, "FSGetStat", &FSGetStat);
-	OSDynLoad_FindExport(handle, false, "FSRename", &FSRename);
-	OSDynLoad_FindExport(handle, false, "FSRemove", &FSRemove);
-	OSDynLoad_FindExport(handle, false, "FSDelClient", &FSDelClient);
-	OSDynLoad_FindExport(handle, false, "FSShutdown", &FSShutdown);
-	
-	OSDynLoad_FindExport(handle, false, "MCP_Open", &MCP_Open);
-	OSDynLoad_FindExport(handle, false, "MCP_GetDeviceId", &MCP_GetDeviceId);
-	OSDynLoad_FindExport(handle, false, "MCP_TitleList", &MCP_TitleList);
-	OSDynLoad_FindExport(handle, false, "MCP_TitleListByAppType", &MCP_TitleListByAppType);
-	OSDynLoad_FindExport(handle, false, "MCP_TitleListByDevice", &MCP_TitleListByDevice);
-	OSDynLoad_FindExport(handle, false, "MCP_Close", &MCP_Close);
-	
-	OSDynLoad_FindExport(handle, false, "__KernelGetInfo", &__KernelGetInfo);
-	
-	OSDynLoad_FindExport(handle, false, "__os_snprintf", &snprintf);
-	
-	OSDynLoad_FindExport(handle, false, "MEMGetBaseHeapHandle", &MEMGetBaseHeapHandle);
-	OSDynLoad_FindExport(handle, false, "MEMGetAllocatableSizeForExpHeapEx", &MEMGetAllocatableSizeForExpHeapEx);
-	
-	OSDynLoad_FindExport(handle, true, "MEMAllocFromDefaultHeap", &pMEMAllocFromDefaultHeap);
-	OSDynLoad_FindExport(handle, true, "MEMAllocFromDefaultHeapEx", &pMEMAllocFromDefaultHeapEx);
-	OSDynLoad_FindExport(handle, true, "MEMFreeToDefaultHeap", &pMEMFreeToDefaultHeap);
-	
-	pMainRPL = (OSDynLoad_RPLInfo **)0x10081014;
-	pFirstRPL = (OSDynLoad_RPLInfo **)0x10081018;
-	pThreadList = (OSThread **)0x100567F8;
+    OSDynLoad_FindExport(handle, false, "OSIsDebuggerInitialized", &OSIsDebuggerInitialized);
+
+    OSDynLoad_FindExport(handle, false, "exit", &exit);
+    OSDynLoad_FindExport(handle, false, "_Exit", &_Exit);
+
+    OSDynLoad_FindExport(handle, false, "OSFatal", &OSFatal);
+
+    OSDynLoad_FindExport(handle, false, "OSGetSymbolName", &OSGetSymbolName);
+    OSDynLoad_FindExport(handle, false, "DisassemblePPCRange", &DisassemblePPCRange);
+    OSDynLoad_FindExport(handle, false, "DisassemblePPCOpcode", &DisassemblePPCOpcode);
+
+    OSDynLoad_FindExport(handle, false, "OSSetExceptionCallback", &OSSetExceptionCallback);
+    OSDynLoad_FindExport(handle, false, "OSSetExceptionCallbackEx", &OSSetExceptionCallbackEx);
+    OSDynLoad_FindExport(handle, false, "OSLoadContext", &OSLoadContext);
+
+    OSDynLoad_FindExport(handle, false, "OSDisableInterrupts", &OSDisableInterrupts);
+    OSDynLoad_FindExport(handle, false, "OSRestoreInterrupts", &OSRestoreInterrupts);
+
+    OSDynLoad_FindExport(handle, false, "__OSLockScheduler", &__OSLockScheduler);
+    OSDynLoad_FindExport(handle, false, "__OSUnlockScheduler", &__OSUnlockScheduler);
+
+    OSDynLoad_FindExport(handle, false, "OSInitMutex", &OSInitMutex);
+    OSDynLoad_FindExport(handle, false, "OSLockMutex", &OSLockMutex);
+    OSDynLoad_FindExport(handle, false, "OSUnlockMutex", &OSUnlockMutex);
+
+    OSDynLoad_FindExport(handle, false, "OSInitMessageQueue", &OSInitMessageQueue);
+    OSDynLoad_FindExport(handle, false, "OSSendMessage", &OSSendMessage);
+    OSDynLoad_FindExport(handle, false, "OSReceiveMessage", &OSReceiveMessage);
+
+    OSDynLoad_FindExport(handle, false, "OSCreateAlarm", &OSCreateAlarm);
+    OSDynLoad_FindExport(handle, false, "OSSetAlarm", &OSSetAlarm);
+    OSDynLoad_FindExport(handle, false, "OSCancelAlarm", &OSCancelAlarm);
+    OSDynLoad_FindExport(handle, false, "OSWaitAlarm", &OSWaitAlarm);
+
+    OSDynLoad_FindExport(handle, false, "OSGetCurrentThread", &OSGetCurrentThread);
+    OSDynLoad_FindExport(handle, false, "OSGetDefaultThread", &OSGetDefaultThread);
+    OSDynLoad_FindExport(handle, false, "OSCreateThread", &OSCreateThread);
+    OSDynLoad_FindExport(handle, false, "OSResumeThread", &OSResumeThread);
+    OSDynLoad_FindExport(handle, false, "OSJoinThread", &OSJoinThread);
+    OSDynLoad_FindExport(handle, false, "OSExitThread", &OSExitThread);
+    OSDynLoad_FindExport(handle, false, "OSGetThreadName", &OSGetThreadName);
+    OSDynLoad_FindExport(handle, false, "OSSetThreadName", &OSSetThreadName);
+    OSDynLoad_FindExport(handle, false, "OSGetThreadAffinity", &OSGetThreadAffinity);
+    OSDynLoad_FindExport(handle, false, "OSGetThreadPriority", &OSGetThreadPriority);
+
+    OSDynLoad_FindExport(handle, false, "OSGetSystemInfo", &OSGetSystemInfo);
+    OSDynLoad_FindExport(handle, false, "OSSleepTicks", &OSSleepTicks);
+
+    OSDynLoad_FindExport(handle, false, "OSGetTitleID", &OSGetTitleID);
+
+    OSDynLoad_FindExport(handle, false, "OSGetMemBound", &OSGetMemBound);
+    OSDynLoad_FindExport(handle, false, "OSEffectiveToPhysical", &OSEffectiveToPhysical);
+
+    OSDynLoad_FindExport(handle, false, "OSScreenInit", &OSScreenInit);
+    OSDynLoad_FindExport(handle, false, "OSScreenGetBufferSizeEx", &OSScreenGetBufferSizeEx);
+    OSDynLoad_FindExport(handle, false, "OSScreenSetBufferEx", &OSScreenSetBufferEx);
+    OSDynLoad_FindExport(handle, false, "OSScreenEnableEx", &OSScreenEnableEx);
+    OSDynLoad_FindExport(handle, false, "OSScreenClearBufferEx", &OSScreenClearBufferEx);
+    OSDynLoad_FindExport(handle, false, "OSScreenFlipBuffersEx", &OSScreenFlipBuffersEx);
+    OSDynLoad_FindExport(handle, false, "OSScreenPutPixelEx", &OSScreenPutPixelEx);
+    OSDynLoad_FindExport(handle, false, "OSScreenPutFontEx", &OSScreenPutFontEx);
+
+    OSDynLoad_FindExport(handle, false, "DCFlushRange", &DCFlushRange);
+    OSDynLoad_FindExport(handle, false, "DCInvalidateRange", &DCInvalidateRange);
+    OSDynLoad_FindExport(handle, false, "ICInvalidateRange", &ICInvalidateRange);
+    OSDynLoad_FindExport(handle, false, "IOS_Open", &IOS_Open);
+    OSDynLoad_FindExport(handle, false, "IOS_Ioctl", &IOS_Ioctl);
+    OSDynLoad_FindExport(handle, false, "IOS_Close", &IOS_Close);
+
+    OSDynLoad_FindExport(handle, false, "FSInit", &FSInit);
+    OSDynLoad_FindExport(handle, false, "FSAddClient", &FSAddClient);
+    OSDynLoad_FindExport(handle, false, "FSInitCmdBlock", &FSInitCmdBlock);
+    OSDynLoad_FindExport(handle, false, "FSGetMountSource", &FSGetMountSource);
+    OSDynLoad_FindExport(handle, false, "FSMount", &FSMount);
+    OSDynLoad_FindExport(handle, false, "FSMakeDir", &FSMakeDir);
+    OSDynLoad_FindExport(handle, false, "FSChangeDir", &FSChangeDir);
+    OSDynLoad_FindExport(handle, false, "FSGetCwd", &FSGetCwd);
+    OSDynLoad_FindExport(handle, false, "FSOpenDir", &FSOpenDir);
+    OSDynLoad_FindExport(handle, false, "FSReadDir", &FSReadDir);
+    OSDynLoad_FindExport(handle, false, "FSCloseDir", &FSCloseDir);
+    OSDynLoad_FindExport(handle, false, "FSOpenFile", &FSOpenFile);
+    OSDynLoad_FindExport(handle, false, "FSGetStatFile", &FSGetStatFile);
+    OSDynLoad_FindExport(handle, false, "FSReadFile", &FSReadFile);
+    OSDynLoad_FindExport(handle, false, "FSWriteFile", &FSWriteFile);
+    OSDynLoad_FindExport(handle, false, "FSCloseFile", &FSCloseFile);
+    OSDynLoad_FindExport(handle, false, "FSGetStat", &FSGetStat);
+    OSDynLoad_FindExport(handle, false, "FSRename", &FSRename);
+    OSDynLoad_FindExport(handle, false, "FSRemove", &FSRemove);
+    OSDynLoad_FindExport(handle, false, "FSDelClient", &FSDelClient);
+    OSDynLoad_FindExport(handle, false, "FSShutdown", &FSShutdown);
+
+    OSDynLoad_FindExport(handle, false, "MCP_Open", &MCP_Open);
+    OSDynLoad_FindExport(handle, false, "MCP_GetDeviceId", &MCP_GetDeviceId);
+    OSDynLoad_FindExport(handle, false, "MCP_TitleList", &MCP_TitleList);
+    OSDynLoad_FindExport(handle, false, "MCP_TitleListByAppType", &MCP_TitleListByAppType);
+    OSDynLoad_FindExport(handle, false, "MCP_TitleListByDevice", &MCP_TitleListByDevice);
+    OSDynLoad_FindExport(handle, false, "MCP_Close", &MCP_Close);
+
+    OSDynLoad_FindExport(handle, false, "__KernelGetInfo", &__KernelGetInfo);
+
+    OSDynLoad_FindExport(handle, false, "__os_snprintf", &snprintf);
+
+    OSDynLoad_FindExport(handle, false, "MEMGetBaseHeapHandle", &MEMGetBaseHeapHandle);
+    OSDynLoad_FindExport(handle, false, "MEMGetAllocatableSizeForExpHeapEx", &MEMGetAllocatableSizeForExpHeapEx);
+
+    OSDynLoad_FindExport(handle, true, "MEMAllocFromDefaultHeap", &pMEMAllocFromDefaultHeap);
+    OSDynLoad_FindExport(handle, true, "MEMAllocFromDefaultHeapEx", &pMEMAllocFromDefaultHeapEx);
+    OSDynLoad_FindExport(handle, true, "MEMFreeToDefaultHeap", &pMEMFreeToDefaultHeap);
+
+    pMainRPL    = (OSDynLoad_RPLInfo **) 0x10081014;
+    pFirstRPL   = (OSDynLoad_RPLInfo **) 0x10081018;
+    pThreadList = (OSThread **) 0x100567F8;
 }
