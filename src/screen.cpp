@@ -1,14 +1,16 @@
 
 #include "screen.h"
+#include "logger.h"
+#include <coreinit/debug.h>
+#include <gx2/state.h>
 
 #include <memory/mappedmemory.h>
 
-Screen::Screen() : screenBuffer(nullptr) {}
+Screen::Screen() : screenBuffer(nullptr) {
+    init();
+}
 Screen::~Screen() {
-    if (screenBuffer) {
-        MEMFreeToMappedMemory(screenBuffer);
-        screenBuffer = nullptr;
-    }
+    destroyBuffer();
 }
 
 void Screen::init() {
@@ -17,6 +19,9 @@ void Screen::init() {
     uint32_t bufferSize0 = OSScreenGetBufferSizeEx(SCREEN_TV);
     uint32_t bufferSize1 = OSScreenGetBufferSizeEx(SCREEN_DRC);
     screenBuffer         = MEMAllocFromMappedMemoryForGX2Ex(bufferSize0 + bufferSize1, 0x100);
+    if (screenBuffer == nullptr) {
+        OSFatal("Failed to allocate screenbuffer");
+    }
     OSScreenSetBufferEx(SCREEN_TV, screenBuffer);
     OSScreenSetBufferEx(SCREEN_DRC, (char *) screenBuffer + bufferSize0);
 
@@ -85,4 +90,12 @@ void Screen::drawText(int x, int y, const char *text) {
 void Screen::flip() {
     flip(SCREEN_TV);
     flip(SCREEN_DRC);
+}
+void Screen::destroyBuffer() {
+    if (screenBuffer) {
+        MEMFreeToMappedMemory(screenBuffer);
+        screenBuffer = nullptr;
+    }
+
+    GX2Init(nullptr);
 }

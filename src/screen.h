@@ -22,6 +22,8 @@ public:
     static void drawText(OSScreenID screen, int x, int y, const char *text);
     static void flip(OSScreenID screen);
 
+    void destroyBuffer();
+
 private:
     void *screenBuffer;
 

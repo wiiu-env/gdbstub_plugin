@@ -7,6 +7,7 @@
 #include <coreinit/mutex.h>
 #include <coreinit/thread.h>
 
+#include <coreinit/exception.h>
 #include <cstdint>
 #include <vector>
 
@@ -233,7 +234,8 @@ private:
         COMMAND_TOGGLE_BREAKPOINT,
         COMMAND_POKE_REGISTERS,
         COMMAND_RECEIVE_MESSAGES,
-        COMMAND_SEND_MESSAGE
+        COMMAND_SEND_MESSAGE,
+        COMMAND_DISASM
     };
 
     static int threadEntry(int argc, const char **argv);
@@ -269,6 +271,11 @@ private:
     bool initialized{};
     bool connected{};
     bool firstTrap{};
+
+    OSExceptionCallbackFn prevDsiHandler = nullptr;
+    OSExceptionCallbackFn prevIsiHandler = nullptr;
+    OSExceptionCallbackFn prevProgramHandler = nullptr;
 };
 
 extern "C" Debugger *debugger;
+extern bool initDebugState;

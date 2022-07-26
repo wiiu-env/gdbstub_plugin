@@ -116,6 +116,7 @@ COMMAND_TOGGLE_BREAKPOINT = 8
 COMMAND_POKE_REGISTERS = 9
 COMMAND_RECEIVE_MESSAGES = 10
 COMMAND_SEND_MESSAGE = 11
+COMMAND_DISASM = 12
 		
 class Debugger:
 	def __init__(self):
@@ -157,6 +158,12 @@ class Debugger:
 		self.sendall(struct.pack(">II", addr, num))
 		data = self.recvall(num)
 		return data
+        
+	def disasm(self, addr, num):
+		self.sendbyte(COMMAND_DISASM)        
+		self.sendall(struct.pack(">II", addr, num))
+		length = struct.unpack(">I", self.recvall(4))[0]
+		return self.recvall(length).decode("ascii")
 
 	def write(self, addr, data):
 		self.sendbyte(COMMAND_WRITE)
@@ -503,18 +510,11 @@ class DisassemblyWidget(QTextEdit):
 		self.updateText()
 		self.updateHighlight()
 
-	def updateText(self):
-		if debugger.connected:
-			blob = debugger.read(self.base, 0x60)
-		else:
-			blob = b"\x00" * 0x60
-
+	def updateText(self):    
 		text = ""
-		for i in range(24):
-			address = self.base + i * 4
-			value = struct.unpack_from(">I", blob, i * 4)[0]
-			instr = disassemble.disassemble(value, address)
-			text += "%08X:  %08X  %s\n" %(address, value, instr)
+		if debugger.connected:
+			text = debugger.disasm(self.base, 0x60)
+
 		self.setPlainText(text)
 
 	def updateHighlight(self):

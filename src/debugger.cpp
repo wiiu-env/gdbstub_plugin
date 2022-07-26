@@ -7,19 +7,26 @@
 #include <coreinit/debug.h>
 #include <coreinit/dynload.h>
 #include <coreinit/exception.h>
+#include <coreinit/interrupts.h>
 #include <coreinit/memory.h>
+#include <coreinit/scheduler.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <gx2/context.h>
 #include <malloc.h>
+#include <sysapp/switch.h>
 #include <vpad/input.h>
 
+#include <stdarg.h>
+#include <string>
+
 Debugger *debugger;
+bool initDebugState = false;
 
 bool BreakPoint::isRange(uint32_t addr, uint32_t length) const {
     return address >= addr && address <= addr + length - 1;
 }
-
 
 BreakPoint *BreakPointMgr::find(uint32_t addr, bool includeSpecial) {
     BreakPoint *bp = breakpoints.find(addr);
@@ -280,7 +287,6 @@ bool ExceptionState::isBreakpoint() {
 }
 
 void ExceptionState::resume() {
-    DEBUG_FUNCTION_LINE("OSLoadContext");
     OSLoadContext(&context);
 }
 
@@ -540,30 +546,26 @@ void Debugger::handleBreakPoint(ExceptionState *state) {
     if (firstTrap) {
         firstTrap = false;
 
-        Screen screen;
-        screen.init();
+        auto *screen = new Screen;
         Screen::drawText(
                 0, 0, "Waiting for debugger connection.\n"
                       "Press the home button to continue without debugger.\n"
                       "You can still connect while the game is running.");
         Screen::flip();
+        delete screen;
 
         while (!connected) {
             uint32_t buttons = GetInput(VPAD_BUTTON_HOME);
             if (buttons) {
-                DEBUG_FUNCTION_LINE("Pressed home");
                 state->context.srr0 += 4;
                 state->resume();
             }
         }
     }
 
-    DEBUG_FUNCTION_LINE("stepper.handleBreakPoint(state);");
-
     stepper.handleBreakPoint(state);
 
     if (!connected) {
-        DEBUG_FUNCTION_LINE("if (!connected) {");
         handleFatalCrash(&state->context, state->type);
     }
 
@@ -671,10 +673,6 @@ void Debugger::cleanup() {
         ;
 }
 
-extern "C" void OSRestoreInterrupts(int state);
-extern "C" void __OSLockScheduler(void *);
-extern "C" void __OSUnlockScheduler(void *);
-extern "C" int OSDisableInterrupts();
 
 static const char **commandNames = (const char *[]){
         "COMMAND_CLOSE",
@@ -688,15 +686,49 @@ static const char **commandNames = (const char *[]){
         "COMMAND_TOGGLE_BREAKPOINT",
         "COMMAND_POKE_REGISTERS",
         "COMMAND_RECEIVE_MESSAGES",
-        "COMMAND_SEND_MESSAGE"};
+        "COMMAND_SEND_MESSAGE",
+        "COMMAND_DISASM"};
+
+
+#define LOG_DISASSEMBLY_SIZE (4096)
+
+static char
+        sDisassemblyBuffer[LOG_DISASSEMBLY_SIZE];
+
+static uint32_t
+        sDisassemblyLength = 0;
+
+
+static void
+disassemblyPrintCallback(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    sDisassemblyLength += vsprintf(sDisassemblyBuffer + sDisassemblyLength,
+                                   fmt, args);
+    sDisassemblyBuffer[sDisassemblyLength] = 0;
+    va_end(args);
+}
+
+void eraseAllSubStr(std::string & mainStr, const std::string & toErase)
+{
+    size_t pos = std::string::npos;
+    // Search for the substring in string in a loop untill nothing is found
+    while ((pos  = mainStr.find(toErase) )!= std::string::npos)
+    {
+        // If found then erase it from string
+        mainStr.erase(pos, toErase.length());
+    }
+}
+
+//#define OSIopShell_Command_Disassemble     ((void (*)(void*, uint32_t))(0x101C400 + 0x173e0))
+#define __os_printf     ((void (*)(char*, ...))(0x101C400 + 0x012e88))
 
 void Debugger::mainLoop(Client *client) {
-    DEBUG_FUNCTION_LINE("About to enter mainLoop while");
     while (!stopRunning) {
         uint8_t cmd;
         if (!client->recvall(&cmd, 1)) return;
 
-        if (cmd <= 11) {
+        if (cmd <= 12 && cmd != 10) {
             DEBUG_FUNCTION_LINE("Recieved command %s %d", commandNames[cmd], cmd);
         }
         if (cmd == COMMAND_CLOSE) {
@@ -713,6 +745,50 @@ void Debugger::mainLoop(Client *client) {
                 return;
             }
             delete[] buffer;
+        } else if (cmd == COMMAND_DISASM) {
+            uint32_t addr, length;
+            if (!client->recvall(&addr, 4)) return;
+            if (!client->recvall(&length, 4)) return;
+
+
+            char *buffer = new char[0x40];
+
+            auto addrAsPtr = (uint32_t *) (addr & 0xfffffffc);
+
+
+
+
+            DisassemblePPCRange(reinterpret_cast<void *>(addr + 0x20), reinterpret_cast<void *>(addr + length), reinterpret_cast<DisassemblyPrintFn>(__os_printf),OSGetSymbolName,
+                                static_cast<DisassemblePPCFlags>(0x121));
+
+
+            for (int i = 0; i < length / 4; i++) {
+               DisassemblePPCOpcode(&addrAsPtr[i],
+                                     buffer,
+                                     0x40,
+                                     OSGetSymbolName,
+                                     static_cast<DisassemblePPCFlags>(0x121));
+                disassemblyPrintCallback("0x%08x    0x%08x    %s\n",&addrAsPtr[i],addrAsPtr[i],buffer);
+            }
+            delete[] buffer;
+
+
+            std::string shit(sDisassemblyBuffer);
+            eraseAllSubStr(shit, "(null)");
+
+
+            DEBUG_FUNCTION_LINE("done");
+
+            auto length_ = shit.length() + 1;
+            if (!client->sendall(&length_, 4)) {
+                sDisassemblyLength = 0;
+                return;
+            }
+            if (!client->sendall(shit.c_str(), length_)) {
+                sDisassemblyLength = 0;
+                return;
+            }
+            sDisassemblyLength = 0;
         } else if (cmd == COMMAND_WRITE) {
             uint32_t addr, length;
             if (!client->recvall(&addr, 4)) return;
@@ -733,15 +809,18 @@ void Debugger::mainLoop(Client *client) {
         } else if (cmd == COMMAND_GET_MODULE_NAME) {
             char name[0x40];
             int length = 0x40;
-            OSDynLoad_GetModuleName(reinterpret_cast<OSDynLoad_Module>(-1), name, &length);
-
+            if(OSDynLoad_GetModuleName(reinterpret_cast<OSDynLoad_Module>(-1), name, &length) != OS_DYNLOAD_OK){
+                strncat(name, "ERROR", sizeof(name) -1);
+            }
             length = strlen(name);
+
             if (!client->sendall(&length, 4)) return;
             if (!client->sendall(name, length)) return;
         } else if (cmd == COMMAND_GET_MODULE_LIST) {
+
             int num_rpls = OSDynLoad_GetNumberOfRPLs();
             if (num_rpls == 0) {
-                return;
+                continue;
             }
 
             std::vector<OSDynLoad_NotifyData> rpls;
@@ -749,7 +828,7 @@ void Debugger::mainLoop(Client *client) {
 
             bool ret = OSDynLoad_GetRPLInfo(0, num_rpls, rpls.data());
             if (!ret) {
-                return;
+                continue;
             }
 
             char buffer[0x1000]; //This should be enough
@@ -784,6 +863,7 @@ void Debugger::mainLoop(Client *client) {
             OSThread *current = ThreadList;
             while (current) {
                 const char *name = OSGetThreadName(current);
+                OSReport("name %s", name);
 
                 uint32_t namelen = 0;
                 if (name) {
@@ -795,7 +875,7 @@ void Debugger::mainLoop(Client *client) {
                 }
 
                 int priority = current->basePriority;
-                int type     = *(uint32_t *) (current->__unk11);
+                int type     = *((uint32_t *) current->__unk11);
                 if (type == 1) {
                     priority -= 0x20;
                 } else if (type == 2) {
@@ -905,24 +985,20 @@ void Debugger::mainLoop(Client *client) {
 
 void Debugger::threadFunc() {
     DEBUG_FUNCTION_LINE("Hello from debugger thread :)!");
-    OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_DSI, dsiHandler);
-    OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_ISI, isiHandler);
-    OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_PROGRAM, programHandler);
-    DEBUG_FUNCTION_LINE("Callback init done.!");
+    prevDsiHandler     = OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_DSI, dsiHandler);
+    prevIsiHandler     = OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_ISI, isiHandler);
+    prevProgramHandler = OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_PROGRAM, programHandler);
 
     Server server;
     Client client;
 
-    DEBUG_FUNCTION_LINE("Set initialized = true");
     initialized = true;
     while (!stopRunning) {
         if (!server.init(Socket::TCP)) continue;
         if (!server.bind(1560)) continue;
         if (!server.accept(&client)) continue;
-        DEBUG_FUNCTION_LINE("Accepted a connection");
         connected = true;
         mainLoop(&client);
-        DEBUG_FUNCTION_LINE("Lets do some cleanup");
         cleanup();
         connected = false;
         client.close();
@@ -931,55 +1007,55 @@ void Debugger::threadFunc() {
 }
 
 int Debugger::threadEntry(int argc, const char **argv) {
-    DEBUG_FUNCTION_LINE("threadEntry");
     debugger->threadFunc();
     return 0;
 }
+
 
 void Debugger::start() {
     initialized = false;
     connected   = false;
     firstTrap   = true;
 
-    DEBUG_FUNCTION_LINE("OSInitMessageQueue");
     OSInitMessageQueue(&eventQueue, eventMessages, MESSAGE_COUNT);
 
-    DEBUG_FUNCTION_LINE("init breakpoints");
     breakpoints.init();
-    DEBUG_FUNCTION_LINE("init exceptions");
     exceptions.init();
-    DEBUG_FUNCTION_LINE("init stepper");
     stepper.init();
 
-
-    DEBUG_FUNCTION_LINE("Alloc thread");
     serverThread = (OSThread *) memalign(0x20, sizeof(OSThread));
-    DEBUG_FUNCTION_LINE("Alloc stack");
-    serverStack = (char *) memalign(0x20, STACK_SIZE);
+    serverStack  = (char *) memalign(0x20, STACK_SIZE);
 
-
-    DEBUG_FUNCTION_LINE("Create thread");
     OSCreateThread(
             serverThread, threadEntry, 0, 0,
             serverStack + STACK_SIZE, STACK_SIZE,
-            0, 12);
-    DEBUG_FUNCTION_LINE("Set thread name");
+            0, OS_THREAD_ATTRIB_AFFINITY_CPU2 | OS_THREAD_ATTRIB_DETACHED);
     OSSetThreadName(serverThread, "Debug Server");
-    DEBUG_FUNCTION_LINE("Resume thread");
     OSResumeThread(serverThread);
 
     while (!initialized) {
-        DEBUG_FUNCTION_LINE("Wait for thread init");
         OSSleepTicks(OSMillisecondsToTicks(20));
     }
+    initDebugState = true;
+    DCFlushRange(&initDebugState, sizeof(initDebugState));
     DEBUG_FUNCTION_LINE("Thread init done! Exit start()");
 }
 
 Debugger::~Debugger() {
     stopRunning = true;
+    DCFlushRange(&stopRunning, sizeof(stopRunning));
     OSJoinThread(serverThread, nullptr);
     free(serverStack);
     serverStack = nullptr;
     free(serverThread);
     serverThread = nullptr;
+
+    initialized = false;
+    connected   = false;
+    firstTrap   = true;
+
+    // Restore exceptions.
+    OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_DSI, prevDsiHandler);
+    OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_ISI, prevIsiHandler);
+    OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_PROGRAM, prevProgramHandler);
 }
