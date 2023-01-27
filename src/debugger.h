@@ -222,7 +222,7 @@ public:
     ~Debugger();
 
 private:
-    enum Command {
+    typedef enum Command {
         COMMAND_CLOSE,
         COMMAND_READ,
         COMMAND_WRITE,
@@ -236,7 +236,7 @@ private:
         COMMAND_RECEIVE_MESSAGES,
         COMMAND_SEND_MESSAGE,
         COMMAND_DISASM
-    };
+    } Command;
 
     static int threadEntry(int argc, const char **argv);
     static BOOL dsiHandler(OSContext *context);

@@ -21,14 +21,14 @@ WUPS_USE_WUT_DEVOPTAB();
 /* https://github.com/QuarkTheAwesome/CafeBinPatch/blob/main/src/runtime-patcher.cpp#L58 */
 bool PatchInstruction(void *instr, uint32_t original, uint32_t replacement) {
     uint32_t current = *(uint32_t *) instr;
-    if (current != original) return current == replacement;
+    if (current != original) {
+        return current == replacement;
+    }
 
     KernelCopyData(OSEffectiveToPhysical((uint32_t) instr), OSEffectiveToPhysical((uint32_t) &replacement), sizeof(replacement));
     //Only works on AROMA! WUPS 0.1's KernelCopyData is uncached, needs DCInvalidate here instead
     DCFlushRange(instr, 4);
     ICInvalidateRange(instr, 4);
-
-    current = *(uint32_t *) instr;
 
     return true;
 }
@@ -55,20 +55,20 @@ INITIALIZE_PLUGIN() {
 
 ON_APPLICATION_START() {
     initLogging();
+
     DEBUG_FUNCTION_LINE("Hello from Debugger plugin");
     pThreadList = (OSThread **) 0x100567F8; // 100567f8
     debugger    = new Debugger();
-    DCFlushRange(&debugger, 4);
-    DCFlushRange(debugger, sizeof(Debugger));
-    DEBUG_FUNCTION_LINE("Created Debugger");
+    OSMemoryBarrier();
+    DEBUG_FUNCTION_LINE_VERBOSE("Created Debugger");
     debugger->start();
-    DEBUG_FUNCTION_LINE("Started Debugger thread");
+    DEBUG_FUNCTION_LINE_VERBOSE("Started Debugger thread");
 }
 
 ON_APPLICATION_REQUESTS_EXIT() {
-    DEBUG_FUNCTION_LINE("Deleting Debugger thread");
+    DEBUG_FUNCTION_LINE_VERBOSE("Deleting Debugger thread");
     delete debugger;
-    DEBUG_FUNCTION_LINE("Deleted Debugger thread");
+    DEBUG_FUNCTION_LINE_VERBOSE("Deleted Debugger thread");
     deinitLogging();
 }
 ON_APPLICATION_ENDS() {

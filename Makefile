@@ -39,10 +39,10 @@ CXXFLAGS	:= $(CFLAGS)
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map) -T$(WUMS_ROOT)/share/libmappedmemory.ld -T$(WUMS_ROOT)/share/libkernel.ld $(WUPSSPECS)
 
-ifeq ($(DEBUG),1)
+
 CXXFLAGS += -DDEBUG -g
 CFLAGS += -DDEBUG -g
-endif
+
 
 LIBS	:= -lwups -lwut -lkernel -lmappedmemory
 
@@ -103,7 +103,7 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 all: $(BUILD)
 
 $(BUILD):
-	@[ -d $@ ] || mkdir -p $@
+	@$(shell [ ! -d $(BUILD) ] && mkdir -p $(BUILD))
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------

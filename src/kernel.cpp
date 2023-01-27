@@ -1,6 +1,5 @@
 #include <coreinit/cache.h>
 #include <coreinit/memorymap.h>
-#include <cstdint>
 #include <kernel/kernel.h>
 
 void KernelWrite(uint32_t addr, const void *data, uint32_t length) {

@@ -9,17 +9,14 @@
 #include <coreinit/exception.h>
 #include <coreinit/interrupts.h>
 #include <coreinit/memory.h>
+#include <coreinit/memorymap.h>
 #include <coreinit/scheduler.h>
+#include <cstdarg>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
-#include <gx2/context.h>
 #include <malloc.h>
-#include <sysapp/switch.h>
-#include <vpad/input.h>
-
-#include <stdarg.h>
 #include <string>
+#include <vpad/input.h>
 
 Debugger *debugger;
 bool initDebugState = false;
@@ -604,10 +601,11 @@ void Debugger::handleCrash(ExceptionState *state) {
 
 void Debugger::handleFatalCrash(OSContext *context, ExceptionState::Type type) {
     const char *name;
-    if (type == ExceptionState::DSI) name = "A DSI";
-    else if (type == ExceptionState::ISI)
+    if (type == ExceptionState::DSI) {
+        name = "A DSI";
+    } else if (type == ExceptionState::ISI) {
         name = "An ISI";
-    else {
+    } else {
         name = "A program";
     }
     DumpContext(context, name);
@@ -638,7 +636,7 @@ void Debugger::exceptionHandler(OSContext *context, ExceptionState::Type type) {
 }
 
 BOOL Debugger::dsiHandler(OSContext *context) {
-    OSContext *info = new OSContext();
+    auto *info = new OSContext();
     memcpy(info, context, sizeof(OSContext));
     context->srr0   = (uint32_t) exceptionHandler;
     context->gpr[3] = (uint32_t) info;
@@ -673,64 +671,41 @@ void Debugger::cleanup() {
         ;
 }
 
-
-static const char **commandNames = (const char *[]){
-        "COMMAND_CLOSE",
-        "COMMAND_READ",
-        "COMMAND_WRITE",
-        "COMMAND_WRITE_CODE",
-        "COMMAND_GET_MODULE_NAME",
-        "COMMAND_GET_MODULE_LIST",
-        "COMMAND_GET_THREAD_LIST",
-        "COMMAND_GET_STACK_TRACE",
-        "COMMAND_TOGGLE_BREAKPOINT",
-        "COMMAND_POKE_REGISTERS",
-        "COMMAND_RECEIVE_MESSAGES",
-        "COMMAND_SEND_MESSAGE",
-        "COMMAND_DISASM"};
-
-
 #define LOG_DISASSEMBLY_SIZE (4096)
 
-static char
-        sDisassemblyBuffer[LOG_DISASSEMBLY_SIZE];
+static char sDisassemblyBuffer[LOG_DISASSEMBLY_SIZE];
 
-static uint32_t
-        sDisassemblyLength = 0;
+static uint32_t sDisassemblyLength = 0;
 
 
 static void
 disassemblyPrintCallback(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    sDisassemblyLength += vsprintf(sDisassemblyBuffer + sDisassemblyLength,
-                                   fmt, args);
+    sDisassemblyLength += vsprintf(sDisassemblyBuffer + sDisassemblyLength, fmt, args);
     sDisassemblyBuffer[sDisassemblyLength] = 0;
     va_end(args);
 }
 
-void eraseAllSubStr(std::string & mainStr, const std::string & toErase)
-{
+void eraseAllSubStr(std::string &mainStr, const std::string &toErase) {
     size_t pos = std::string::npos;
-    // Search for the substring in string in a loop untill nothing is found
-    while ((pos  = mainStr.find(toErase) )!= std::string::npos)
-    {
+    // Search for the substring in string in a loop until nothing is found
+    while ((pos = mainStr.find(toErase)) != std::string::npos) {
         // If found then erase it from string
         mainStr.erase(pos, toErase.length());
     }
 }
 
 //#define OSIopShell_Command_Disassemble     ((void (*)(void*, uint32_t))(0x101C400 + 0x173e0))
-#define __os_printf     ((void (*)(char*, ...))(0x101C400 + 0x012e88))
+#define __os_printf ((void (*)(char *, ...))(0x101C400 + 0x012e88))
 
 void Debugger::mainLoop(Client *client) {
     while (!stopRunning) {
         uint8_t cmd;
-        if (!client->recvall(&cmd, 1)) return;
-
-        if (cmd <= 12 && cmd != 10) {
-            DEBUG_FUNCTION_LINE("Recieved command %s %d", commandNames[cmd], cmd);
+        if (!client->recvall(&cmd, 1)) {
+            return;
         }
+
         if (cmd == COMMAND_CLOSE) {
             return;
         } else if (cmd == COMMAND_READ) {
@@ -755,36 +730,25 @@ void Debugger::mainLoop(Client *client) {
 
             auto addrAsPtr = (uint32_t *) (addr & 0xfffffffc);
 
-
-
-
-            DisassemblePPCRange(reinterpret_cast<void *>(addr + 0x20), reinterpret_cast<void *>(addr + length), reinterpret_cast<DisassemblyPrintFn>(__os_printf),OSGetSymbolName,
-                                static_cast<DisassemblePPCFlags>(0x121));
-
-
             for (int i = 0; i < length / 4; i++) {
-               DisassemblePPCOpcode(&addrAsPtr[i],
-                                     buffer,
-                                     0x40,
-                                     OSGetSymbolName,
-                                     static_cast<DisassemblePPCFlags>(0x121));
-                disassemblyPrintCallback("0x%08x    0x%08x    %s\n",&addrAsPtr[i],addrAsPtr[i],buffer);
+                if (OSIsAddressValid(reinterpret_cast<uint32_t>(&addrAsPtr[i]))) {
+                    DisassemblePPCOpcode(&addrAsPtr[i], buffer, 0x40, OSGetSymbolName, static_cast<DisassemblePPCFlags>(0x121));
+                    disassemblyPrintCallback("0x%08x    0x%08x    %s\n", &addrAsPtr[i], addrAsPtr[i], buffer);
+                } else {
+                    disassemblyPrintCallback("0x%08x    ??????????    ???\n", &addrAsPtr[i]);
+                }
             }
             delete[] buffer;
 
+            std::string tmpString(sDisassemblyBuffer);
+            eraseAllSubStr(tmpString, "(null)");
 
-            std::string shit(sDisassemblyBuffer);
-            eraseAllSubStr(shit, "(null)");
-
-
-            DEBUG_FUNCTION_LINE("done");
-
-            auto length_ = shit.length() + 1;
+            auto length_ = tmpString.length() + 1;
             if (!client->sendall(&length_, 4)) {
                 sDisassemblyLength = 0;
                 return;
             }
-            if (!client->sendall(shit.c_str(), length_)) {
+            if (!client->sendall(tmpString.c_str(), length_)) {
                 sDisassemblyLength = 0;
                 return;
             }
@@ -809,36 +773,44 @@ void Debugger::mainLoop(Client *client) {
         } else if (cmd == COMMAND_GET_MODULE_NAME) {
             char name[0x40];
             int length = 0x40;
-            if(OSDynLoad_GetModuleName(reinterpret_cast<OSDynLoad_Module>(-1), name, &length) != OS_DYNLOAD_OK){
-                strncat(name, "ERROR", sizeof(name) -1);
+            if (OSDynLoad_GetModuleName(reinterpret_cast<OSDynLoad_Module>(-1), name, &length) != OS_DYNLOAD_OK) {
+                strncat(name, "ERROR", sizeof(name) - 1);
             }
             length = strlen(name);
 
             if (!client->sendall(&length, 4)) return;
             if (!client->sendall(name, length)) return;
         } else if (cmd == COMMAND_GET_MODULE_LIST) {
-
             int num_rpls = OSDynLoad_GetNumberOfRPLs();
             if (num_rpls == 0) {
+                DEBUG_FUNCTION_LINE_ERR("Failed to get OSDynLoad_GetNumberOfRPLs");
                 continue;
             }
-
             std::vector<OSDynLoad_NotifyData> rpls;
             rpls.resize(num_rpls);
 
             bool ret = OSDynLoad_GetRPLInfo(0, num_rpls, rpls.data());
             if (!ret) {
+                DEBUG_FUNCTION_LINE_ERR("Failed to get OSDynLoad_GetRPLInfo");
                 continue;
             }
+            auto BUFFER_SIZE = 0x1000; //This should be enough
 
-            char buffer[0x1000]; //This should be enough
+            char buffer[BUFFER_SIZE];
+
             uint32_t offset = 0;
 
+
             for (auto &info : rpls) {
-                uint32_t namelen = strlen(info.name);
-                if (offset + 0x18 + namelen > 0x1000) {
+                uint32_t namelen = 0;
+                if (info.name != nullptr) {
+                    namelen = strlen(info.name);
+                }
+
+                if (offset + 0x18 + namelen > BUFFER_SIZE) {
                     break;
                 }
+
                 auto *infobuf = (uint32_t *) (buffer + offset);
                 infobuf[0]    = info.textAddr;
                 infobuf[1]    = info.textSize;
@@ -846,11 +818,11 @@ void Debugger::mainLoop(Client *client) {
                 infobuf[3]    = info.dataSize;
                 infobuf[4]    = (uint32_t) 0; // TODO: missing
                 infobuf[5]    = namelen;
-                memcpy(&infobuf[6], info.name, namelen);
-                offset += 0x18 + strlen(info.name);
+                if (namelen > 0) {
+                    memcpy(&infobuf[6], info.name, namelen);
+                    offset += 0x18 + strlen(info.name);
+                }
             }
-
-            //OSUnlockMutex(OSDynLoad_gLoaderLock);
 
             if (!client->sendall(&offset, 4)) return;
             if (!client->sendall(buffer, offset)) return;
@@ -858,19 +830,20 @@ void Debugger::mainLoop(Client *client) {
             int state = OSDisableInterrupts();
             __OSLockScheduler(this);
 
-            char buffer[0x1000]; //This should be enough
+            auto BUFFER_SIZE = 0x1000; //This should be enough
+
+            char buffer[BUFFER_SIZE]; //This should be enough
             uint32_t offset   = 0;
             OSThread *current = ThreadList;
             while (current) {
                 const char *name = OSGetThreadName(current);
-                OSReport("name %s", name);
 
                 uint32_t namelen = 0;
                 if (name) {
                     namelen = strlen(name);
                 }
 
-                if (offset + 0x1C + namelen > 0x1000) {
+                if (offset + 0x1C + namelen > BUFFER_SIZE) {
                     break;
                 }
 
@@ -978,7 +951,7 @@ void Debugger::mainLoop(Client *client) {
             }
             exceptions.unlock();
         } else {
-            DEBUG_FUNCTION_LINE("Recieved unknown command %d", cmd);
+            DEBUG_FUNCTION_LINE_ERR("Recieved unknown command %d", cmd);
         }
     }
 }
@@ -1027,7 +1000,7 @@ void Debugger::start() {
     serverStack  = (char *) memalign(0x20, STACK_SIZE);
 
     OSCreateThread(
-            serverThread, threadEntry, 0, 0,
+            serverThread, threadEntry, 0, nullptr,
             serverStack + STACK_SIZE, STACK_SIZE,
             0, OS_THREAD_ATTRIB_AFFINITY_CPU2 | OS_THREAD_ATTRIB_DETACHED);
     OSSetThreadName(serverThread, "Debug Server");

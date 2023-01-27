@@ -19,9 +19,11 @@ void Screen::init() {
     uint32_t bufferSize0 = OSScreenGetBufferSizeEx(SCREEN_TV);
     uint32_t bufferSize1 = OSScreenGetBufferSizeEx(SCREEN_DRC);
     screenBuffer         = MEMAllocFromMappedMemoryForGX2Ex(bufferSize0 + bufferSize1, 0x100);
+
     if (screenBuffer == nullptr) {
         OSFatal("Failed to allocate screenbuffer");
     }
+    memset(screenBuffer, 0, bufferSize0 + bufferSize1);
     OSScreenSetBufferEx(SCREEN_TV, screenBuffer);
     OSScreenSetBufferEx(SCREEN_DRC, (char *) screenBuffer + bufferSize0);
 

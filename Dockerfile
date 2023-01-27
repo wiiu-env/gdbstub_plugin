@@ -1,6 +1,7 @@
-FROM wiiuenv/devkitppc:20211229
+FROM wiiuenv/devkitppc:20220724
 
-COPY --from=wiiuenv/wiiupluginsystem:20220123 /artifacts $DEVKITPRO
-COPY --from=wiiuenv/libiosuhax:20220129 /artifacts $DEVKITPRO
+COPY --from=wiiuenv/wiiupluginsystem:20220724 /artifacts $DEVKITPRO
+COPY --from=wiiuenv/libkernel:20220724 /artifacts $DEVKITPRO
+COPY --from=wiiuenv/libmappedmemory:20220724 /artifacts $DEVKITPRO
 
 WORKDIR project
